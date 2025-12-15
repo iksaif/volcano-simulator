@@ -6,25 +6,8 @@ import { MaterialRegistry } from '../materials/MaterialRegistry';
 import { MaterialState } from '../core/Types';
 
 export class PressureComputation {
-  // Pressure scale: internal calculations use 0-10000 range
-  // This is then mapped to 0-255 for storage in 8 bits
+  // Pressure scale: 0-10000 range for direct float storage
   private static readonly PRESSURE_SCALE = 10000;
-  private static readonly PRESSURE_MAX_STORED = 255;
-
-  /**
-   * Convert internal pressure (0-10000) to stored value (0-255)
-   */
-  private static pressureToStored(pressure: number): number {
-    const scaled = (pressure / this.PRESSURE_SCALE) * this.PRESSURE_MAX_STORED;
-    return Math.min(Math.max(Math.floor(scaled), 0), this.PRESSURE_MAX_STORED);
-  }
-
-  /**
-   * Convert stored pressure (0-255) to internal value (0-10000)
-   */
-  static storedToPressure(stored: number): number {
-    return (stored / this.PRESSURE_MAX_STORED) * this.PRESSURE_SCALE;
-  }
   /**
    * Phase 1: Compute weight-based pressure for all cells
    * Pressure increases with depth (hydrostatic pressure)
@@ -59,12 +42,10 @@ export class PressureComputation {
           pressure = this.computeSolidPressure(grid, x, y, material.density);
         }
 
-        // Convert to stored format (0-255)
-        const storedPressure = this.pressureToStored(pressure);
-
-        // Update cell pressure if changed
-        if (Cell.getPressure(cell) !== storedPressure) {
-          grid.set(x, y, Cell.setPressure(cell, storedPressure));
+        // Update cell pressure if changed (use float directly)
+        const currentPressure = Cell.getPressure(cell);
+        if (Math.abs(currentPressure - pressure) > 0.1) {
+          grid.set(x, y, Cell.setPressure(cell, pressure));
         }
       }
     }
@@ -74,7 +55,7 @@ export class PressureComputation {
    * Compute gas pressure (low, slightly increases with depth)
    * Returns pressure in 0-10000 scale
    */
-  private static computeGasPressure(grid: Grid, x: number, y: number): number {
+  private static computeGasPressure(grid: Grid, _x: number, y: number): number {
     // Base atmospheric pressure (100 in new scale, ~1% of max)
     let pressure = 100;
 
@@ -94,7 +75,7 @@ export class PressureComputation {
     grid: Grid,
     x: number,
     y: number,
-    density: number
+    _density: number
   ): number {
     // Count liquid/solid cells above this position
     let weightAbove = 0;
@@ -102,11 +83,11 @@ export class PressureComputation {
     for (let checkY = 0; checkY < y; checkY++) {
       const aboveCell = grid.get(x, checkY);
       if (!Cell.isEmpty(aboveCell)) {
-        const aboveMaterialId = Cell.getMaterialId(aboveCell);
-        const aboveMaterial = MaterialRegistry.get(aboveMaterialId);
+        // Get actual density (accounts for temperature/pressure)
+        const actualDensity = Cell.getDensity(aboveCell);
 
         // Add weight contribution (density-based)
-        weightAbove += aboveMaterial.density / 1000; // Scale down for reasonable values
+        weightAbove += actualDensity / 1000; // Scale down for reasonable values
       }
     }
 
@@ -126,7 +107,7 @@ export class PressureComputation {
     grid: Grid,
     x: number,
     y: number,
-    density: number
+    _density: number
   ): number {
     // Similar to liquid but solids are less affected by their own depth
     let weightAbove = 0;
@@ -142,7 +123,9 @@ export class PressureComputation {
           aboveMaterial.state === MaterialState.Solid ||
           aboveMaterial.state === MaterialState.Liquid
         ) {
-          weightAbove += aboveMaterial.density / 1000;
+          // Get actual density (accounts for temperature)
+          const actualDensity = Cell.getDensity(aboveCell);
+          weightAbove += actualDensity / 1000;
         }
       }
     }
@@ -221,7 +204,7 @@ export class PressureComputation {
 
         // Store new pressure (apply after all calculations)
         const index = grid.coordsToIndex(x, y);
-        newPressures.set(index, Math.floor(newPressure));
+        newPressures.set(index, newPressure);
       }
     }
 
@@ -229,7 +212,7 @@ export class PressureComputation {
     for (const [index, pressure] of newPressures) {
       const {x, y} = grid.indexToCoords(index);
       const cell = grid.get(x, y);
-      const clampedPressure = Math.min(Math.max(pressure, 0), this.PRESSURE_MAX_STORED);
+      const clampedPressure = Math.min(Math.max(pressure, 0), this.PRESSURE_SCALE);
       grid.set(x, y, Cell.setPressure(cell, clampedPressure));
     }
   }

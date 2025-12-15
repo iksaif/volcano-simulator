@@ -8,6 +8,8 @@ export const Config = {
   // Display
   PIXEL_SCALE: 4, // Canvas CSS scaling
   TARGET_FPS: 60, // Rendering framerate
+  WEBGL_RENDER_WIDTH: 512, // Internal render resolution for WebGL (4x super-sampling)
+  WEBGL_RENDER_HEIGHT: 512,
 
   // Physics
   PHYSICS_FPS: 20, // Physics update rate (can be different from render rate)

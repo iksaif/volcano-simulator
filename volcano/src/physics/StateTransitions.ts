@@ -3,7 +3,7 @@
 import { Grid } from '../core/Grid';
 import { Cell } from '../core/Cell';
 import { MaterialRegistry } from '../materials/MaterialRegistry';
-import { MaterialState, MaterialType } from '../core/Types';
+import { MaterialState } from '../core/Types';
 
 export class StateTransitions {
   /**
@@ -52,9 +52,8 @@ export class StateTransitions {
           }
 
           // Use custom transition handler or default
-          let newCell: number;
           if (material.onTransition) {
-            newCell = material.onTransition(cell, x, y, grid);
+            const newCell = material.onTransition(cell, x, y, grid);
             grid.set(x, y, newCell);
           } else {
             // Check if we need to compress (e.g., vapor → water)
@@ -74,7 +73,7 @@ export class StateTransitions {
               this.compressMaterial(grid, x, y, material.id, compressionRatio - 1);
             } else {
               // Normal 1:1 conversion
-              newCell = Cell.create(material.lowTransitionTo, temp, 0);
+              const newCell = Cell.create(material.lowTransitionTo, temp, 0);
               grid.set(x, y, newCell);
             }
           }
@@ -87,9 +86,8 @@ export class StateTransitions {
           }
 
           // Use custom transition handler or default
-          let newCell: number;
           if (material.onTransition) {
-            newCell = material.onTransition(cell, x, y, grid);
+            const newCell = material.onTransition(cell, x, y, grid);
             grid.set(x, y, newCell);
           } else {
             // Check if we need to expand (e.g., water → vapor)
@@ -104,7 +102,7 @@ export class StateTransitions {
               this.expandMaterial(grid, x, y, targetMaterial, temp, expansionCount - 1);
             } else {
               // Normal 1:1 conversion
-              newCell = Cell.create(material.highTransitionTo, temp, 0);
+              const newCell = Cell.create(material.highTransitionTo, temp, 0);
               grid.set(x, y, newCell);
             }
           }
@@ -193,7 +191,7 @@ export class StateTransitions {
               Cell.getMaterialId(targetCell) === materialId
             ) {
               // Remove this cell (compression) - replace with Empty
-              grid.set(targetX, targetY, 0);
+              grid.set(targetX, targetY, Cell.create(0, 0, 0));
               removed++;
             }
           }

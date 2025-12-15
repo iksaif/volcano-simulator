@@ -1,10 +1,9 @@
-// Grid data structure using Uint32Array for efficient storage
+// Grid data structure storing Cell objects
 
 import { Cell } from './Cell';
-import { MaterialType } from './Types';
 
 export class Grid {
-  private cells: Uint32Array;
+  private cells: Cell[];
   public readonly width: number;
   public readonly height: number;
   public readonly size: number;
@@ -13,39 +12,42 @@ export class Grid {
     this.width = width;
     this.height = height;
     this.size = width * height;
-    this.cells = new Uint32Array(this.size);
+    this.cells = new Array(this.size);
 
-    // Fill grid with Empty (void - no material)
-    this.fill(0);
+    // Fill grid with Empty cells
+    const emptyCell = new Cell(0, 20, 0, 0);
+    for (let i = 0; i < this.size; i++) {
+      this.cells[i] = Cell.clone(emptyCell);
+    }
   }
 
   /**
-   * Get cell value at coordinates (with bounds checking)
+   * Get cell at coordinates (with bounds checking)
    */
-  get(x: number, y: number): number {
-    if (!this.inBounds(x, y)) return 0; // Return empty cell if out of bounds
+  get(x: number, y: number): Cell {
+    if (!this.inBounds(x, y)) return new Cell(0, 20, 0, 0); // Return empty cell if out of bounds
     return this.cells[y * this.width + x];
   }
 
   /**
-   * Set cell value at coordinates (with bounds checking)
+   * Set cell at coordinates (with bounds checking)
    */
-  set(x: number, y: number, cell: number): void {
+  set(x: number, y: number, cell: Cell): void {
     if (!this.inBounds(x, y)) return;
     this.cells[y * this.width + x] = cell;
   }
 
   /**
-   * Get cell value by index (no bounds checking - use carefully in hot loops)
+   * Get cell by index (no bounds checking - use carefully in hot loops)
    */
-  getUnsafe(index: number): number {
+  getUnsafe(index: number): Cell {
     return this.cells[index];
   }
 
   /**
-   * Set cell value by index (no bounds checking - use carefully in hot loops)
+   * Set cell by index (no bounds checking - use carefully in hot loops)
    */
-  setUnsafe(index: number, cell: number): void {
+  setUnsafe(index: number, cell: Cell): void {
     this.cells[index] = cell;
   }
 
@@ -74,21 +76,23 @@ export class Grid {
   }
 
   /**
-   * Fill the entire grid with a specific cell value
+   * Fill the entire grid with a specific cell
    */
-  fill(cell: number): void {
-    this.cells.fill(cell);
+  fill(cell: Cell): void {
+    for (let i = 0; i < this.size; i++) {
+      this.cells[i] = Cell.clone(cell);
+    }
   }
 
   /**
-   * Fill a rectangular region with a specific cell value
-   * @param cell - The cell value to fill with
+   * Fill a rectangular region with a specific cell
+   * @param cell - The cell to fill with
    * @param x - Starting x coordinate (left edge)
    * @param y - Starting y coordinate (top edge)
    * @param w - Width of the rectangle
    * @param h - Height of the rectangle
    */
-  rect(cell: number, x: number, y: number, w: number, h: number): void {
+  rect(cell: Cell, x: number, y: number, w: number, h: number): void {
     // Clamp rectangle to grid bounds
     const x1 = Math.max(0, x);
     const y1 = Math.max(0, y);
@@ -98,7 +102,7 @@ export class Grid {
     // Fill the rectangle
     for (let ry = y1; ry < y2; ry++) {
       for (let rx = x1; rx < x2; rx++) {
-        this.cells[ry * this.width + rx] = cell;
+        this.cells[ry * this.width + rx] = Cell.clone(cell);
       }
     }
   }
@@ -107,13 +111,14 @@ export class Grid {
    * Clear the entire grid (fill with Empty)
    */
   clear(): void {
-    this.fill(0); // Fill with Empty (void - no material)
+    const emptyCell = new Cell(0, 20, 0, 0);
+    this.fill(emptyCell);
   }
 
   /**
    * Get a reference to the underlying array (use with caution)
    */
-  getRawArray(): Uint32Array {
+  getRawArray(): Cell[] {
     return this.cells;
   }
 }

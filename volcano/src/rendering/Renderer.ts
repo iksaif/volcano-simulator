@@ -27,7 +27,7 @@ export class Renderer {
   /**
    * Render the grid to canvas using a color mapping function
    */
-  render(grid: Grid, getColor: (cell: number) => number): void {
+  render(grid: Grid, getColor: (cell: import('../core/Cell').Cell) => number): void {
     const size = grid.size;
 
     // Direct pixel write loop

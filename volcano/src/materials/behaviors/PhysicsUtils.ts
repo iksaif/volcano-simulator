@@ -2,7 +2,7 @@
 
 import { Grid } from '../../core/Grid';
 import { Cell } from '../../core/Cell';
-import { MaterialState, MaterialType } from '../../core/Types';
+import { MaterialState } from '../../core/Types';
 import { MaterialRegistry } from '../MaterialRegistry';
 
 /**
@@ -56,7 +56,11 @@ export function tryMove(
     }
 
     // For liquids and gases, check density-based displacement
-    if (currentMaterial.density <= targetMaterial.density) {
+    // Use actual density (accounts for temperature effects)
+    const currentDensity = Cell.getDensity(currentCell);
+    const targetDensity = Cell.getDensity(targetCell);
+
+    if (currentDensity <= targetDensity) {
       return false;
     }
 
@@ -69,7 +73,7 @@ export function tryMove(
   // Move to empty space
   grid.set(toX, toY, currentCell);
   // Leave source empty (void - no material)
-  grid.set(fromX, fromY, 0);
+  grid.set(fromX, fromY, Cell.create(0, 0, 0));
   return true;
 }
 

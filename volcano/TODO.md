@@ -20,22 +20,27 @@
   - File: `src/materials/behaviors/GenericBehaviors.ts:12-30`
 
 ### Gas Buoyancy Improvements
-- [ ] **Make vapor and gas rise through air properly**
-  - Current: Gases may not consistently rise through air
-  - Goal: Vapor (density 0.6) and gas (density 1.0) should rise through air (density 1.2)
-  - Implementation: Check density comparison in `tryMove()` - ensure lighter gases displace heavier air
-  - File: `src/materials/behaviors/PhysicsUtils.ts:38-66`
+- [x] **Make vapor and gas rise through air properly** ✅ DONE
+  - Uses actual density in displacement logic via `Cell.getDensity()`
+  - File: `src/materials/behaviors/PhysicsUtils.ts:58-70`
 
-- [ ] **Temperature-based density for gases**
-  - Current: Gas density is constant
-  - Goal: Hot gas should be less dense (rise faster), cold gas more dense (sink)
-  - Implementation:
-    - Modify `MaterialRegistry` to allow dynamic density calculation
-    - `effectiveDensity = baseDensity * (293 / (temp + 273))` (ideal gas law approximation)
-    - Update displacement logic to use effective density
-  - Files:
-    - `src/materials/MaterialRegistry.ts`
-    - `src/materials/behaviors/PhysicsUtils.ts`
+- [x] **Temperature-based density for gases and liquids** ✅ DONE
+  - Implemented thermal expansion for gases and liquids
+  - Formula: `ρ(T) = ρ₀ / (1 + α·ΔT)`
+  - Gases: α = 0.003 (3% per degree)
+  - Liquids: α = 0.0002 (0.02% per degree)
+  - Solids: constant density
+  - Pressure does NOT affect density (avoids creating matter)
+  - Added `Cell.getDensity()` method for centralized calculation
+  - Files updated:
+    - `src/core/Types.ts` - Added `thermalExpansion` and `compressibility` properties
+    - `src/core/Cell.ts` - Added `getDensity()` method
+    - `src/materials/MaterialRegistry.ts` - Added `calculateActualDensity()` with real coefficients
+    - `src/materials/behaviors/PhysicsUtils.ts` - Uses `Cell.getDensity()` for displacement
+    - `src/physics/PressureComputation.ts` - Uses actual density for hydrostatic pressure
+    - `src/input/LavaInjector.ts` - Uses actual density for displacement
+    - `src/index.ts` - UI shows actual density
+  - TODO: Implement mass tracking per cell for realistic gas compression (explosions, vapor expansion)
 
 ### Gas Movement Speed
 - [ ] **Reduce gas upward movement speed**

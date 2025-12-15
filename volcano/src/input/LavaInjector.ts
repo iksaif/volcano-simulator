@@ -82,11 +82,19 @@ export class LavaInjector {
     }
 
     // Try to displace lighter materials
-    const materialId = Cell.getMaterialId(cell);
-    const material = MaterialRegistry.get(materialId);
+    // Get actual density of the existing material (accounts for temperature)
+    const actualDensity = Cell.getDensity(cell);
 
-    // Lava density = 3100, displace if target is significantly lighter
-    if (material.density < 2500) { // Displace gases, vapor, water
+    // Calculate lava's actual density at injection temperature
+    const lavaProps = MaterialRegistry.get(MaterialType.Lava);
+    const pressure = Cell.getPressure(cell);
+    const lavaActualDensity = MaterialRegistry.calculateActualDensity(
+      lavaProps,
+      this.temperature,
+      pressure
+    );
+
+    if (actualDensity < lavaActualDensity * 0.8) { // Displace if <80% of lava density
       // Push displaced material upward if possible
       if (y > 0 && Cell.isEmpty(grid.get(x, y - 1))) {
         grid.set(x, y - 1, cell); // Move displaced material up

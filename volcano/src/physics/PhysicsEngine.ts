@@ -22,7 +22,7 @@ export class PhysicsEngine {
   /**
    * Update the simulation state
    */
-  update(grid: Grid, deltaTime: number): void {
+  update(grid: Grid, _deltaTime: number): void {
     // Phase 0: Clear all processed flags from previous frame
     this.clearProcessedFlags(grid);
 

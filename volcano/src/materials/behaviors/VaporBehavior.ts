@@ -2,14 +2,13 @@
 
 import { Grid } from '../../core/Grid';
 import { Cell } from '../../core/Cell';
-import { Config } from '../../app/Config';
 import { updateGas } from './GenericBehaviors';
 
 /**
  * Vapor is a gas that rises, spreads, and cools over time
  * Uses generic gas behavior plus passive cooling
  */
-export function updateVapor(grid: Grid, x: number, y: number, cell: number): void {
+export function updateVapor(grid: Grid, x: number, y: number, cell: Cell): void {
   // Use generic gas behavior for movement
   updateGas(grid, x, y, cell);
 

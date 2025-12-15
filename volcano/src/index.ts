@@ -3,6 +3,7 @@
 import { Grid } from './core/Grid';
 import { Cell } from './core/Cell';
 import { Renderer } from './rendering/Renderer';
+import { WebGLRenderer } from './rendering/WebGLRenderer';
 import { Config } from './app/Config';
 import { PerformanceMonitor } from './utils/PerformanceMonitor';
 import { MaterialType } from './core/Types';
@@ -11,14 +12,15 @@ import { ColorMapper } from './rendering/ColorMapper';
 import { PhysicsEngine } from './physics/PhysicsEngine';
 import { InputManager } from './input/InputManager';
 import { UIManager } from './ui/UIManager';
-import { PressureComputation } from './physics/PressureComputation';
 
 // Visualization modes
-enum VisualizationMode {
-  Normal = 'normal',
-  Temperature = 'temperature',
-  Pressure = 'pressure',
-}
+const VisualizationMode = {
+  Normal: 'normal',
+  Temperature: 'temperature',
+  Pressure: 'pressure',
+} as const;
+
+type VisualizationMode = typeof VisualizationMode[keyof typeof VisualizationMode];
 
 // Update the info panel with cell information
 function updateInfoPanel(grid: Grid, x: number, y: number): void {
@@ -35,8 +37,8 @@ function updateInfoPanel(grid: Grid, x: number, y: number): void {
   const materialId = Cell.getMaterialId(cell);
   const material = MaterialRegistry.get(materialId);
   const temperature = Cell.getTemperature(cell);
-  const storedPressure = Cell.getPressure(cell);
-  const actualPressure = PressureComputation.storedToPressure(storedPressure);
+  const pressure = Cell.getPressure(cell);
+  const density = Cell.getDensity(cell);
 
   cellInfoDiv.innerHTML = `
     <div class="info-row">
@@ -53,11 +55,11 @@ function updateInfoPanel(grid: Grid, x: number, y: number): void {
     </div>
     <div class="info-row">
       <span class="info-label">Pressure:</span>
-      <span class="info-value">${Math.floor(actualPressure)}</span>
+      <span class="info-value">${pressure.toFixed(1)}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Density:</span>
-      <span class="info-value">${material.density} kg/m³</span>
+      <span class="info-value">${density.toFixed(1)} kg/m³</span>
     </div>
     <div class="info-row">
       <span class="info-label">Position:</span>
@@ -79,27 +81,90 @@ function init() {
   // Initialize material registry
   MaterialRegistry.init();
 
-  // Get canvas element
-  const canvas = document.getElementById(
-    'simulation-canvas'
+  // Get canvas elements (separate canvases for each renderer)
+  const pixelCanvas = document.getElementById(
+    'simulation-canvas-pixel'
   ) as HTMLCanvasElement;
-  if (!canvas) {
-    throw new Error('Canvas element not found');
+  const webglCanvas = document.getElementById(
+    'simulation-canvas-webgl'
+  ) as HTMLCanvasElement;
+
+  if (!pixelCanvas || !webglCanvas) {
+    throw new Error('Canvas elements not found');
   }
 
-  // Create grid and renderer (CSS handles the display scaling)
+  // Create grid
   const grid = new Grid(Config.GRID_WIDTH, Config.GRID_HEIGHT);
-  const renderer = new Renderer(canvas, Config.GRID_WIDTH, Config.GRID_HEIGHT);
+
+  // Create pixel renderer on its own canvas (native grid resolution)
+  const pixelRenderer = new Renderer(pixelCanvas, Config.GRID_WIDTH, Config.GRID_HEIGHT);
+
+  // Try to create WebGL renderer on separate canvas (same grid resolution, WebGL handles smooth upscaling)
+  let webglRenderer: WebGLRenderer | null = null;
+  try {
+    webglRenderer = new WebGLRenderer(webglCanvas, Config.GRID_WIDTH, Config.GRID_HEIGHT);
+    console.log('✅ WebGL2 renderer available');
+  } catch (error) {
+    console.warn('⚠️  WebGL2 not supported, using pixel renderer only:', error);
+  }
+
+  // Current renderer (start with pixel)
+  let currentRenderer: Renderer | WebGLRenderer = pixelRenderer;
+  let currentCanvas = pixelCanvas;
 
   // Create physics engine
   const physics = new PhysicsEngine();
 
-  // Create input manager and UI
-  const inputManager = new InputManager(canvas, grid);
-  const uiManager = new UIManager(inputManager);
+  // Create input manager and UI (start with pixel canvas)
+  const inputManager = new InputManager(pixelCanvas, grid);
+  new UIManager(inputManager); // UIManager sets up event listeners and manages UI state
 
   // Visualization mode state
   let visualizationMode: VisualizationMode = VisualizationMode.Normal;
+
+  // Renderer switching
+  const pixelButton = document.getElementById('renderer-pixel');
+  const webglButton = document.getElementById('renderer-webgl');
+
+  if (pixelButton && webglButton) {
+    // Disable WebGL button if not supported
+    if (!webglRenderer) {
+      webglButton.disabled = true;
+      webglButton.style.opacity = '0.5';
+      webglButton.style.cursor = 'not-allowed';
+      webglButton.title = 'WebGL2 not supported in this browser';
+    }
+
+    pixelButton.addEventListener('click', () => {
+      currentRenderer = pixelRenderer;
+      currentCanvas = pixelCanvas;
+      inputManager.setCanvas(pixelCanvas);
+
+      // Show pixel canvas, hide WebGL canvas
+      pixelCanvas.style.display = 'block';
+      webglCanvas.style.display = 'none';
+
+      pixelButton.classList.add('active');
+      webglButton.classList.remove('active');
+      console.log('🖼️  Switched to Pixel renderer');
+    });
+
+    webglButton.addEventListener('click', () => {
+      if (webglRenderer) {
+        currentRenderer = webglRenderer;
+        currentCanvas = webglCanvas;
+        inputManager.setCanvas(webglCanvas);
+
+        // Show WebGL canvas, hide pixel canvas
+        webglCanvas.style.display = 'block';
+        pixelCanvas.style.display = 'none';
+
+        webglButton.classList.add('active');
+        pixelButton.classList.remove('active');
+        console.log('✨ Switched to WebGL renderer');
+      }
+    });
+  }
 
   let groundLevel = grid.height - 15;
   // Create initial ground (rock at bottom)
@@ -118,7 +183,7 @@ function init() {
   }
 
   // Color mapping function that switches based on mode
-  const getColor = (cell: number): number => {
+  const getColor = (cell: Cell): number => {
     switch (visualizationMode) {
       case VisualizationMode.Temperature:
         return ColorMapper.getTemperatureVisualization(cell);
@@ -165,7 +230,7 @@ function init() {
   // Animation loop with fixed timestep physics
   let lastTime = performance.now();
   let physicsAccumulator = 0;
-  let physicsFPS = Config.PHYSICS_FPS; // Current physics rate (can be adjusted)
+  let physicsFPS: number = Config.PHYSICS_FPS; // Current physics rate (can be adjusted)
   let physicsTimestep = 1000 / physicsFPS; // ms per physics update
 
   const gameLoop = () => {
@@ -199,13 +264,13 @@ function init() {
     }
 
     // Render (always happens once per frame, regardless of physics rate)
-    renderer.render(grid, getColor);
+    currentRenderer.render(grid, getColor);
 
     // Draw cursor overlay and update info panel if mouse is on canvas
     const mousePos = inputManager.getMousePosition();
     if (mousePos) {
       const brushSize = inputManager.materialBrush.getBrushSize();
-      renderer.drawCursor(mousePos.x, mousePos.y, brushSize);
+      currentRenderer.drawCursor(mousePos.x, mousePos.y, brushSize);
 
       // Update info panel with cell information
       updateInfoPanel(grid, mousePos.x, mousePos.y);

@@ -2,7 +2,6 @@
 
 import { Cell } from '../core/Cell';
 import { MaterialRegistry } from '../materials/MaterialRegistry';
-import { MaterialType } from '../core/Types';
 import { Config } from '../app/Config';
 
 export class ColorMapper {
@@ -17,14 +16,12 @@ export class ColorMapper {
    * Get color for a cell based on material and temperature
    * Returns color in ABGR format (0xAABBGGRR) for little-endian systems
    */
-  static getColor(cell: number): number {
+  static getColor(cell: Cell): number {
     if (Cell.isEmpty(cell)) {
       return 0xff000000; // Black - Empty void (ABGR: alpha=255, blue=0, green=0, red=0)
     }
 
     const materialId = Cell.getMaterialId(cell);
-
-    const temp = Cell.getTemperature(cell);
 
     // Get base material properties
     const material = MaterialRegistry.get(materialId);
@@ -101,7 +98,7 @@ export class ColorMapper {
   /**
    * Get temperature visualization (heatmap)
    */
-  static getTemperatureVisualization(cell: number): number {
+  static getTemperatureVisualization(cell: Cell): number {
     if (Cell.isEmpty(cell)) {
       return 0xff000000;
     }
@@ -113,7 +110,7 @@ export class ColorMapper {
    * Get pressure visualization (heatmap)
    * Dynamically normalizes based on observed min/max pressure
    */
-  static getPressureVisualization(cell: number): number {
+  static getPressureVisualization(cell: Cell): number {
     if (Cell.isEmpty(cell)) {
       return 0xff000000;
     }

@@ -23,7 +23,7 @@ export class MaterialBrush {
 
           if (grid.inBounds(px, py)) {
             // Determine appropriate temperature for the material
-            let temperature = Config.ROOM_TEMPERATURE;
+            let temperature: number = Config.ROOM_TEMPERATURE;
 
             switch (this.currentMaterial) {
               case MaterialType.Lava:

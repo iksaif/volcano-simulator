@@ -23,6 +23,32 @@ export class InputManager {
   }
 
   /**
+   * Switch to a different canvas (for renderer switching)
+   */
+  setCanvas(canvas: HTMLCanvasElement): void {
+    // Remove event listeners from old canvas
+    this.removeEventListeners();
+
+    // Update canvas reference
+    this.canvas = canvas;
+
+    // Add event listeners to new canvas
+    this.setupEventListeners();
+  }
+
+  /**
+   * Remove event listeners from canvas
+   */
+  private removeEventListeners(): void {
+    this.canvas.removeEventListener('mousedown', this.handleMouseDown.bind(this));
+    this.canvas.removeEventListener('mousemove', this.handleMouseMove.bind(this));
+    this.canvas.removeEventListener('mouseup', this.handleMouseUp.bind(this));
+    this.canvas.removeEventListener('touchstart', this.handleTouchStart.bind(this));
+    this.canvas.removeEventListener('touchmove', this.handleTouchMove.bind(this));
+    this.canvas.removeEventListener('touchend', this.handleTouchEnd.bind(this));
+  }
+
+  /**
    * Setup mouse and touch event listeners
    */
   private setupEventListeners(): void {
@@ -30,7 +56,7 @@ export class InputManager {
     this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
     this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
     this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
-    this.canvas.addEventListener('mouseleave', (e) => {
+    this.canvas.addEventListener('mouseleave', () => {
       this.handleMouseUp();
       this.mouseGridX = null;
       this.mouseGridY = null;

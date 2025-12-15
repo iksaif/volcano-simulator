@@ -3,7 +3,6 @@
 import { Grid } from '../../core/Grid';
 import { Cell } from '../../core/Cell';
 import { MaterialRegistry } from '../MaterialRegistry';
-import { MaterialState } from '../../core/Types';
 import { tryMove, isRestingOnSomething, randomDirection } from './PhysicsUtils';
 
 /**
@@ -13,7 +12,7 @@ export function updateSolid(
   grid: Grid,
   x: number,
   y: number,
-  cell: number
+  cell: Cell
 ): void {
   const materialId = Cell.getMaterialId(cell);
   const material = MaterialRegistry.get(materialId);
@@ -36,7 +35,7 @@ export function updateLiquid(
   grid: Grid,
   x: number,
   y: number,
-  cell: number
+  cell: Cell
 ): void {
   const materialId = Cell.getMaterialId(cell);
   const material = MaterialRegistry.get(materialId);
@@ -53,7 +52,14 @@ export function updateLiquid(
   if (isRestingOnSomething(grid, x, y)) {
     // Liquids spread horizontally with probability based on viscosity
     const flowProbability = 1 - material.viscosity / 255;
-    if (Math.random() < flowProbability * 0.4) {
+
+    // Smooth horizontal spread multiplier based on viscosity
+    // Low-viscosity (water: ~64) → ~0.68, high-viscosity (lava: ~170) → ~0.41
+    // Uses exponential decay: base + range * exp(-factor * normalized_viscosity)
+    const normalizedViscosity = material.viscosity / 255; // 0-1 range
+    const horizontalMultiplier = 0.2 + (0.8 * Math.exp(-2.0 * normalizedViscosity));
+
+    if (Math.random() < flowProbability * horizontalMultiplier) {
       tryMove(grid, x, y, x + dir, y, material.viscosity);
     }
   }
@@ -66,21 +72,8 @@ export function updateGas(
   grid: Grid,
   x: number,
   y: number,
-  cell: number
+  cell: Cell
 ): void {
-  const materialId = Cell.getMaterialId(cell);
-  const material = MaterialRegistry.get(materialId);
-
-  // Gases rise (negative gravity / buoyancy) - move UP (y - 1)
-  if (tryMove(grid, x, y, x, y - 1, material.viscosity)) return;
-
-  // Spread diagonally upward
-  const dir = randomDirection();
-  if (tryMove(grid, x, y, x + dir, y - 1, material.viscosity)) return;
-  if (tryMove(grid, x, y, x - dir, y - 1, material.viscosity)) return;
-
-  // Spread sideways
-  if (Math.random() < 0.3) {
-    if (tryMove(grid, x, y, x + dir, y, material.viscosity)) return;
-  }
+  // Gases behave like liquids for now
+  updateLiquid(grid, x, y, cell);
 }

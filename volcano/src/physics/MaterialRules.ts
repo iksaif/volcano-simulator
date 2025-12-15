@@ -11,7 +11,7 @@ import { updateSolid, updateLiquid, updateGas } from '../materials/behaviors/Gen
 // Import custom material behaviors (only those with special logic)
 import { updateVapor } from '../materials/behaviors/VaporBehavior';
 
-type UpdateFunction = (grid: Grid, x: number, y: number, cell: number) => void;
+type UpdateFunction = (grid: Grid, x: number, y: number, cell: Cell) => void;
 
 export class MaterialRules {
   private static rules = new Map<number, UpdateFunction>();
@@ -39,7 +39,7 @@ export class MaterialRules {
    * Update a cell based on its material type
    * Falls back to generic behavior based on material state if no custom rule exists
    */
-  static update(grid: Grid, x: number, y: number, cell: number): void {
+  static update(grid: Grid, x: number, y: number, cell: Cell): void {
     const materialId = Cell.getMaterialId(cell);
     const updateFn = this.rules.get(materialId);
 
