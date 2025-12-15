@@ -35,6 +35,9 @@ export class MaterialBrush {
               case MaterialType.Water:
                 temperature = Config.ROOM_TEMPERATURE;
                 break;
+              case MaterialType.Ice:
+                temperature = -10; // Cold ice
+                break;
               case MaterialType.Vapor:
                 temperature = 100;
                 break;

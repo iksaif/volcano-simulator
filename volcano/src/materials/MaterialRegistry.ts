@@ -199,10 +199,28 @@ export class MaterialRegistry {
       flammable: false,
       minTemp: 0, // Real: 0°C at 1 atm (freezing point)
       maxTemp: Config.WATER_BOIL_TEMP, // Real: 100°C at 1 atm (boiling point)
+      lowTransitionTo: MaterialType.Ice, // Freezes to ice when cooling
       highTransitionTo: MaterialType.Vapor, // Boils to vapor when heating
       expansionRatio: 4.0, // Real: 1,600x volume expansion (approximated as 4x for gameplay)
       thermalExpansion: 0.000207, // Real: 0.000207 1/K (volumetric expansion at 20°C)
       compressibility: 0.000046, // Real: 4.6×10⁻⁵ 1/atm (nearly incompressible)
+    });
+
+    // Ice material (solid H2O)
+    this.register({
+      id: MaterialType.Ice,
+      name: 'Ice',
+      state: MaterialState.Solid,
+      baseColor: 0xb0e5f5, // Light cyan/blue
+      density: 917, // Real: 917 kg/m³ (at 0°C), less dense than water (ice floats!)
+      viscosity: this.normalizeViscosity(Infinity), // Real: ∞ (infinite - solids don't flow at normal temps)
+      thermalConductivity: 0.5, // Real: 2.2 W/(m·K) (ice conducts heat better than water)
+      heatCapacity: 2.1, // Real: 2.05 kJ/(kg·K) (about half of water)
+      flammable: false,
+      minTemp: -Infinity,
+      maxTemp: 0, // Real: 0°C at 1 atm (melting point)
+      highTransitionTo: MaterialType.Water, // Melts to water when heating
+      thermalExpansion: 0.000051, // Real: 51×10⁻⁶ 1/K (volumetric expansion, minimal for ice)
     });
 
     // Vapor material (steam - water vapor)

@@ -10,14 +10,22 @@
   - File: `src/materials/behaviors/GenericBehaviors.ts:34-60`
 
 ### Solid Bridging Behavior
-- [ ] **Add temperature-dependent viscosity for solids**
-  - Current: Solids fall like rigid particles
-  - Goal: Cold solids should be able to "bridge" gaps (form stable structures)
-  - Implementation:
-    - Add `effectiveViscosity = baseViscosity * (1 + coolingFactor)` where coolingFactor increases as temp < threshold
-    - At low temperatures, solids should check if they're supported by neighbors before falling
-    - Add structural stability check: solid doesn't fall if 2+ neighbors below/diagonal
-  - File: `src/materials/behaviors/GenericBehaviors.ts:12-30`
+- [x] **Add temperature-dependent viscosity for solids** ✅ DONE
+  - Implemented temperature-dependent viscosity: `effectiveViscosity = baseViscosity * (1 + coolingFactor)`
+  - Cooling factor increases exponentially as temperature drops below 30% of melting point
+  - Added `checkStructuralSupport()` function: solids with 2+ supports (below/diagonal) can bridge gaps
+  - **Pressure-based collapse**: Bridges collapse when pressure exceeds structural capacity
+    - Structural capacity = `materialStrength × supportCount × strengthMultiplier`
+    - Material strength = `density × (1 + coolingFactor × 0.5)`
+    - Cold materials are stronger (more rigid), more supports = stronger bridge
+    - Heavy material above can collapse bridges even if cold and supported
+  - Cold solids with structural support stay bridged IF pressure is manageable
+  - File: `src/materials/behaviors/GenericBehaviors.ts:9-115`
+  - Added Ice material (solid H2O) for testing:
+    - Density: 917 kg/m³ (less dense than water - ice floats!)
+    - Melting point: 0°C
+    - Transitions to Water when heated
+    - Files: `src/core/Types.ts:12`, `src/materials/MaterialRegistry.ts:209-224`
 
 ### Gas Buoyancy Improvements
 - [x] **Make vapor and gas rise through air properly** ✅ DONE

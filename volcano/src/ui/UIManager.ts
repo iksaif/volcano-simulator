@@ -91,6 +91,9 @@ export class UIManager {
       case 'water':
         material = MaterialType.Water;
         break;
+      case 'ice':
+        material = MaterialType.Ice;
+        break;
       case 'vapor':
         material = MaterialType.Vapor;
         break;
