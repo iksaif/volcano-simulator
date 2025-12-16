@@ -67,6 +67,25 @@ export interface MaterialProperties {
   // Optional: Custom transition logic for complex state changes
   canTransition?: (cell: any, x: number, y: number, grid: any) => boolean;
   onTransition?: (cell: any, x: number, y: number, grid: any) => any;
+
+  // Extended properties for fluid dynamics engine
+  // Cohesion strength for solid binding (0-1, higher = stronger bonds)
+  cohesion?: number;
+
+  // Brittleness - how quickly integrity drops under stress (0-1, higher = more brittle)
+  brittleness?: number;
+
+  // Structural strength - resistance to fracture (0-1, higher = stronger)
+  structuralStrength?: number;
+
+  // Softening temperature - above this, rock weakens but doesn't melt (°C)
+  softeningTemp?: number;
+
+  // Fracture temperature - temperature where rock becomes fragile (°C)
+  fractureTemp?: number;
+
+  // Granular flag - true for materials that flow like sand/debris
+  granular?: boolean;
 }
 
 // Update function type for material rules

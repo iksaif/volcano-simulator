@@ -2,11 +2,9 @@
 
 import { Grid } from '../core/Grid';
 import { Cell } from '../core/Cell';
-import { MaterialRegistry } from '../materials/MaterialRegistry';
 import { Config } from '../app/Config';
 
 export class WebGLRenderer {
-  private canvas: HTMLCanvasElement;
   private gl: WebGL2RenderingContext;
   private program: WebGLProgram;
   private textureData: Uint8Array;
@@ -23,7 +21,6 @@ export class WebGLRenderer {
   private positionBuffer: WebGLBuffer;
 
   constructor(canvas: HTMLCanvasElement, gridWidth: number, gridHeight: number) {
-    this.canvas = canvas;
     this.gridWidth = gridWidth;
     this.gridHeight = gridHeight;
     this.renderWidth = Config.WEBGL_RENDER_WIDTH;
@@ -546,7 +543,7 @@ export class WebGLRenderer {
    * Note: We can't use 2D context on a WebGL canvas, so this is a no-op for now
    * TODO: Implement cursor drawing using WebGL if needed
    */
-  drawCursor(gridX: number, gridY: number, brushSize: number): void {
+  drawCursor(_gridX: number, _gridY: number, _brushSize: number): void {
     // WebGL cursor drawing would require creating a separate overlay canvas
     // or implementing cursor rendering in WebGL shaders
     // For now, we skip cursor drawing in WebGL mode
@@ -556,7 +553,7 @@ export class WebGLRenderer {
    * Draw tooltip
    * Note: We can't use 2D context on a WebGL canvas, so this is a no-op for now
    */
-  drawTooltip(gridX: number, gridY: number, text: string): void {
+  drawTooltip(_gridX: number, _gridY: number, _text: string): void {
     // WebGL tooltip drawing would require creating a separate overlay canvas
     // For now, we skip tooltip drawing in WebGL mode
   }

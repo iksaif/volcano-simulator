@@ -164,6 +164,32 @@
       box-shadow: 0 0 10px rgba(74, 158, 255, 0.4);
     }
 
+    .physics-engine-select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: 2px solid #444;
+      border-radius: 4px;
+      background: #333;
+      color: #eee;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+
+    .physics-engine-select:hover {
+      background: #444;
+      border-color: #666;
+    }
+
+    .physics-engine-select:focus {
+      outline: none;
+      border-color: #ff6b35;
+      box-shadow: 0 0 10px rgba(255, 107, 53, 0.4);
+    }
+
     .material-buttons {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -281,6 +307,17 @@
     <div class="renderer-buttons">
       <button id="renderer-pixel" class="active">Pixel</button>
       <button id="renderer-webgl">Smooth (WebGL)</button>
+    </div>
+
+    <h3>Physics Engine</h3>
+    <select id="physics-engine" class="physics-engine-select">
+      <option value="cellular">Cellular Automaton</option>
+    </select>
+
+    <div style="margin-top: 10px;">
+      <button id="debug-toggle" style="width: 100%; padding: 8px; background: #1a1a1a; color: #0f0; border: 1px solid #0f0; border-radius: 4px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold;">
+        🔍 TOGGLE DEBUG MODE
+      </button>
     </div>
 
     <h3>Material Brush</h3>

@@ -9,9 +9,11 @@ import { PerformanceMonitor } from './utils/PerformanceMonitor';
 import { MaterialType } from './core/Types';
 import { MaterialRegistry } from './materials/MaterialRegistry';
 import { ColorMapper } from './rendering/ColorMapper';
-import { PhysicsEngine } from './physics/PhysicsEngine';
+import { PhysicsEngineRegistry } from './physics/PhysicsEngineRegistry';
+import type { IPhysicsEngine } from './physics/IPhysicsEngine';
 import { InputManager } from './input/InputManager';
 import { UIManager } from './ui/UIManager';
+import { PhysicsDebugger } from './utils/PhysicsDebugger';
 
 // Visualization modes
 const VisualizationMode = {
@@ -78,8 +80,9 @@ function clearInfoPanel(): void {
 
 // Initialize the application
 function init() {
-  // Initialize material registry
+  // Initialize registries
   MaterialRegistry.init();
+  PhysicsEngineRegistry.init();
 
   // Get canvas elements (separate canvases for each renderer)
   const pixelCanvas = document.getElementById(
@@ -110,10 +113,9 @@ function init() {
 
   // Current renderer (start with pixel)
   let currentRenderer: Renderer | WebGLRenderer = pixelRenderer;
-  let currentCanvas = pixelCanvas;
 
-  // Create physics engine
-  const physics = new PhysicsEngine();
+  // Create physics engine (default to cellular)
+  let physics: IPhysicsEngine = PhysicsEngineRegistry.create('cellular');
 
   // Create input manager and UI (start with pixel canvas)
   const inputManager = new InputManager(pixelCanvas, grid);
@@ -129,7 +131,7 @@ function init() {
   if (pixelButton && webglButton) {
     // Disable WebGL button if not supported
     if (!webglRenderer) {
-      webglButton.disabled = true;
+      (webglButton as HTMLButtonElement).disabled = true;
       webglButton.style.opacity = '0.5';
       webglButton.style.cursor = 'not-allowed';
       webglButton.title = 'WebGL2 not supported in this browser';
@@ -137,7 +139,6 @@ function init() {
 
     pixelButton.addEventListener('click', () => {
       currentRenderer = pixelRenderer;
-      currentCanvas = pixelCanvas;
       inputManager.setCanvas(pixelCanvas);
 
       // Show pixel canvas, hide WebGL canvas
@@ -152,7 +153,6 @@ function init() {
     webglButton.addEventListener('click', () => {
       if (webglRenderer) {
         currentRenderer = webglRenderer;
-        currentCanvas = webglCanvas;
         inputManager.setCanvas(webglCanvas);
 
         // Show WebGL canvas, hide pixel canvas
@@ -163,6 +163,41 @@ function init() {
         pixelButton.classList.remove('active');
         console.log('✨ Switched to WebGL renderer');
       }
+    });
+  }
+
+  // Physics engine switching
+  const physicsEngineSelect = document.getElementById('physics-engine') as HTMLSelectElement;
+
+  if (physicsEngineSelect) {
+    // Populate physics engine options
+    const engines = PhysicsEngineRegistry.getAvailableEngines();
+    physicsEngineSelect.innerHTML = '';
+
+    engines.forEach(engine => {
+      const option = document.createElement('option');
+      option.value = engine.id;
+      option.textContent = engine.name;
+      option.title = engine.description;
+      physicsEngineSelect.appendChild(option);
+    });
+
+    // Set default value
+    physicsEngineSelect.value = 'cellular';
+
+    // Add change listener
+    physicsEngineSelect.addEventListener('change', () => {
+      const selectedEngine = physicsEngineSelect.value;
+      physics = PhysicsEngineRegistry.create(selectedEngine);
+      console.log(`⚙️  Switched to ${physics.getName()} physics engine`);
+    });
+  }
+
+  // Debug mode toggle
+  const debugToggleButton = document.getElementById('debug-toggle');
+  if (debugToggleButton) {
+    debugToggleButton.addEventListener('click', () => {
+      PhysicsDebugger.toggle();
     });
   }
 
@@ -224,6 +259,9 @@ function init() {
         visualizationMode = VisualizationMode.Normal;
         console.log('👁️  Normal visualization mode');
         break;
+      case 'd':
+        PhysicsDebugger.toggle();
+        break;
     }
   });
 
@@ -261,6 +299,11 @@ function init() {
     // If we hit max steps, reset accumulator to prevent catching up forever
     if (physicsSteps >= maxPhysicsSteps) {
       physicsAccumulator = 0;
+    }
+
+    // Update physics debugger (if enabled)
+    if (PhysicsDebugger.isEnabled()) {
+      PhysicsDebugger.update(grid, physics.getName());
     }
 
     // Render (always happens once per frame, regardless of physics rate)

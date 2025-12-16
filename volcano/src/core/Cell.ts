@@ -15,11 +15,39 @@ export class Cell {
   // State flags (processed bit, etc.)
   flags: number;
 
-  constructor(materialId: number = 0, temperature: number = 20, pressure: number = 0, flags: number = 0) {
+  // Velocity components (for fluid dynamics engine)
+  vx: number;
+  vy: number;
+
+  // Structural integrity (0-1, for breakable rock in fluid dynamics engine)
+  integrity: number;
+
+  // Cluster ID for solid structures (-1 if not in a cluster)
+  clusterId: number;
+
+  // Whether this solid cell is anchored to world boundaries
+  anchored: boolean;
+
+  constructor(
+    materialId: number = 0,
+    temperature: number = 20,
+    pressure: number = 0,
+    flags: number = 0,
+    vx: number = 0,
+    vy: number = 0,
+    integrity: number = 1,
+    clusterId: number = -1,
+    anchored: boolean = false
+  ) {
     this.materialId = materialId;
     this.temperature = temperature;
     this.pressure = pressure;
     this.flags = flags;
+    this.vx = vx;
+    this.vy = vy;
+    this.integrity = integrity;
+    this.clusterId = clusterId;
+    this.anchored = anchored;
   }
 
   /**
@@ -150,6 +178,64 @@ export class Cell {
    * Clone a cell
    */
   static clone(cell: Cell): Cell {
-    return new Cell(cell.materialId, cell.temperature, cell.pressure, cell.flags);
+    return new Cell(
+      cell.materialId,
+      cell.temperature,
+      cell.pressure,
+      cell.flags,
+      cell.vx,
+      cell.vy,
+      cell.integrity,
+      cell.clusterId,
+      cell.anchored
+    );
+  }
+
+  // Velocity getters/setters
+  static getVelocityX(cell: Cell): number {
+    return cell.vx;
+  }
+
+  static getVelocityY(cell: Cell): number {
+    return cell.vy;
+  }
+
+  static setVelocity(cell: Cell, vx: number, vy: number): Cell {
+    const newCell = Cell.clone(cell);
+    newCell.vx = vx;
+    newCell.vy = vy;
+    return newCell;
+  }
+
+  // Integrity getters/setters
+  static getIntegrity(cell: Cell): number {
+    return cell.integrity;
+  }
+
+  static setIntegrity(cell: Cell, integrity: number): Cell {
+    const newCell = Cell.clone(cell);
+    newCell.integrity = Math.max(0, Math.min(1, integrity));
+    return newCell;
+  }
+
+  // Cluster getters/setters
+  static getClusterId(cell: Cell): number {
+    return cell.clusterId;
+  }
+
+  static setClusterId(cell: Cell, clusterId: number): Cell {
+    const newCell = Cell.clone(cell);
+    newCell.clusterId = clusterId;
+    return newCell;
+  }
+
+  static isAnchored(cell: Cell): boolean {
+    return cell.anchored;
+  }
+
+  static setAnchored(cell: Cell, anchored: boolean): Cell {
+    const newCell = Cell.clone(cell);
+    newCell.anchored = anchored;
+    return newCell;
   }
 }
