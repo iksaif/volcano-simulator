@@ -52,13 +52,16 @@ export class PhysicsEngine {
   }
 
   /**
-   * Clear processed flags from all cells
+   * Clear processed and displaced flags from all cells
    */
   private clearProcessedFlags(grid: Grid): void {
     for (let i = 0; i < grid.size; i++) {
       const cell = grid.getUnsafe(i);
       if (!Cell.isEmpty(cell)) {
-        grid.setUnsafe(i, Cell.clearProcessed(cell));
+        // Clear both processed (bit 0) and displaced upward (bit 1) flags
+        let clearedCell = Cell.clearProcessed(cell);
+        clearedCell = Cell.clearDisplacedUpward(clearedCell);
+        grid.setUnsafe(i, clearedCell);
       }
     }
   }

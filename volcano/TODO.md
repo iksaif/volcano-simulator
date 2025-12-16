@@ -51,14 +51,25 @@
   - TODO: Implement mass tracking per cell for realistic gas compression (explosions, vapor expansion)
 
 ### Gas Movement Speed
-- [ ] **Reduce gas upward movement speed**
-  - Current: Gases rise too quickly (instant if path clear)
-  - Goal: Gases should rise more slowly, creating smoother plumes
+- [x] **Reduce gas upward movement speed** ✅ DONE
+  - Problem: Gases were "teleporting" to the top in a single frame
+  - Root cause: Bottom-to-top iteration created cascading swap chains
+    - Row 100: Dense air swaps with gas → gas moves up 1 cell
+    - Row 99: Dense air swaps with gas (that just moved) → gas moves up 1 cell
+    - ... continues to top in ONE frame
+  - Solution: Track displacement direction with bit 1 flag
   - Implementation:
-    - Add probability check in `updateGas()` before upward moves
-    - `moveUpProbability = 0.3 * (1 - viscosity/255)` - only 30% chance per frame
-    - Creates more realistic, slower gas plumes
-  - File: `src/materials/behaviors/GenericBehaviors.ts:65-86`
+    - Added `Cell.setDisplacedUpward()`, `Cell.wasDisplacedUpward()`, `Cell.clearDisplacedUpward()` methods
+    - Check if `dy < 0 && Cell.wasDisplacedUpward(targetCell)` before allowing upward displacement
+    - Mark displaced cells with flag when swapping upward
+    - Clear both flags (processed and displaced) at start of each frame
+  - Result: Each cell can only be displaced upward once per frame (no cascading)
+  - At 20 FPS, gas rises ~20 cells/second = 3-4 seconds to reach top
+  - Files:
+    - `src/core/Cell.ts:116-132` (displacement tracking methods)
+    - `src/materials/behaviors/PhysicsUtils.ts:51-84` (displacement check and marking)
+    - `src/physics/PhysicsEngine.ts:57-67` (clear flags each frame)
+  - Future benefit: Displacement tracking ready for inertia/momentum implementation
 
 ### Vapor Condensation
 - [ ] **Further reduce vapor condensation rate**

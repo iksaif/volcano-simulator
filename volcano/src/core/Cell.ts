@@ -110,6 +110,28 @@ export class Cell {
   }
 
   /**
+   * Mark cell as displaced upward this frame (set bit 1 of flags)
+   * Used to prevent gas teleportation from cascading swaps
+   */
+  static setDisplacedUpward(cell: Cell): Cell {
+    return Cell.setFlags(cell, cell.flags | 0x2);
+  }
+
+  /**
+   * Check if cell was displaced upward this frame (check bit 1 of flags)
+   */
+  static wasDisplacedUpward(cell: Cell): boolean {
+    return (cell.flags & 0x2) !== 0;
+  }
+
+  /**
+   * Clear displaced upward flag (clear bit 1 of flags)
+   */
+  static clearDisplacedUpward(cell: Cell): Cell {
+    return Cell.setFlags(cell, cell.flags & ~0x2);
+  }
+
+  /**
    * Get actual density from cell (derived from material, temperature, and pressure)
    * This calculates the real-time density based on thermal expansion
    */
