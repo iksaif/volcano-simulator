@@ -17,6 +17,7 @@ export class InputManager {
     this.canvas = canvas;
     this.grid = grid;
     this.lavaInjector = new LavaInjector();
+    this.lavaInjector.setGrid(grid); // Initialize shaft position
     this.materialBrush = new MaterialBrush();
 
     this.setupEventListeners();
@@ -89,13 +90,8 @@ export class InputManager {
     this.isMouseDown = true;
     const { x, y } = this.getGridCoords(e.clientX, e.clientY);
 
-    // Check if clicking in bottom area for lava injection
-    if (y > this.grid.height - 10) {
-      this.lavaInjector.activate(x);
-    } else {
-      // Paint with brush
-      this.materialBrush.paint(this.grid, x, y);
-    }
+    // Paint with brush
+    this.materialBrush.paint(this.grid, x, y);
   }
 
   /**
@@ -111,10 +107,8 @@ export class InputManager {
     // Only paint when mouse is down
     if (!this.isMouseDown) return;
 
-    // Only paint with brush (not in injection area)
-    if (y <= this.grid.height - 10) {
-      this.materialBrush.paint(this.grid, x, y);
-    }
+    // Paint with brush
+    this.materialBrush.paint(this.grid, x, y);
   }
 
   /**
@@ -122,8 +116,6 @@ export class InputManager {
    */
   private handleMouseUp(): void {
     this.isMouseDown = false;
-    // Clear all injection points when mouse is released
-    this.lavaInjector.clear();
   }
 
   /**
@@ -136,11 +128,7 @@ export class InputManager {
       this.isMouseDown = true;
       const { x, y } = this.getGridCoords(touch.clientX, touch.clientY);
 
-      if (y > this.grid.height - 10) {
-        this.lavaInjector.activate(x);
-      } else {
-        this.materialBrush.paint(this.grid, x, y);
-      }
+      this.materialBrush.paint(this.grid, x, y);
     }
   }
 
@@ -153,9 +141,7 @@ export class InputManager {
       const touch = e.touches[0];
       const { x, y } = this.getGridCoords(touch.clientX, touch.clientY);
 
-      if (y <= this.grid.height - 10) {
-        this.materialBrush.paint(this.grid, x, y);
-      }
+      this.materialBrush.paint(this.grid, x, y);
     }
   }
 
@@ -164,8 +150,6 @@ export class InputManager {
    */
   private handleTouchEnd(): void {
     this.isMouseDown = false;
-    // Clear all injection points when touch is released
-    this.lavaInjector.clear();
   }
 
   /**

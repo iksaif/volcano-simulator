@@ -272,7 +272,23 @@ export class MaterialRegistry {
       flammable: true, // Real: yes (ignition temp ~300-350°C for dry plant matter)
       minTemp: -10, // Real: ~-5 to -15°C (frost damage begins)
       maxTemp: 200, // Real: 150-250°C (thermal decomposition), 300-350°C (ignition)
-      highTransitionTo: MaterialType.Empty, // Burns away (will be ash later)
+      highTransitionTo: MaterialType.Ash, // Burns to ash
+    });
+
+    // Ash material (volcanic ash - fine particles of rock, minerals, and volcanic glass)
+    this.register({
+      id: MaterialType.Ash,
+      name: 'Ash',
+      state: MaterialState.Solid,
+      baseColor: 0x808080, // Gray
+      density: 700, // Real: 600-800 kg/m³ (loose volcanic ash)
+      viscosity: this.normalizeViscosity(10), // Low viscosity - flows like sand
+      thermalConductivity: 0.3, // Low conductivity
+      heatCapacity: 0.8, // Similar to rock
+      flammable: false,
+      minTemp: -Infinity,
+      maxTemp: Infinity,
+      granular: true, // Flows like sand
     });
   }
 

@@ -5,8 +5,15 @@ import { Cell } from '../../../../core/Cell';
 import { MaterialRegistry } from '../../../../materials/MaterialRegistry';
 import { MaterialState } from '../../../../core/Types';
 
-export class ForcesPass {
-  static execute(grid: Grid, gravity: number, dt: number): void {
+import type { IPhysicsEnginePass } from "../../../IPhysicsEngine";
+export class ForcesPass implements IPhysicsEnginePass {
+  private gravity: number;
+
+  constructor(gravity: number) {
+      this.gravity = gravity;
+    }
+
+    execute(grid: Grid, dt: number): void {
     for (let y = 0; y < grid.height; y++) {
       for (let x = 0; x < grid.width; x++) {
         const cell = grid.get(x, y);
@@ -21,29 +28,30 @@ export class ForcesPass {
         let vy = Cell.getVelocityY(cell);
 
         // Apply gravity
-        vy += gravity * dt;
+        vy += this.gravity * dt;
 
         // Buoyancy for hot fluids/gases
         if (material.state !== MaterialState.Solid) {
           const temp = Cell.getTemperature(cell);
           const thermalExp = material.thermalExpansion || 0;
+          // TODO: remove this temp check, compute buoyancy based on density difference.
           if (thermalExp > 0 && temp > 20) {
             const buoyancy = thermalExp * (temp - 20) * 0.1;
-            vy -= buoyancy * gravity * dt;
+            vy -= buoyancy * this.gravity * dt;
           }
         }
 
-        // Viscosity drag
-        const viscosity = material.viscosity / 255;
-        const drag = 1 - viscosity * 0.5;
-        vx *= drag;
-        vy *= drag;
+        // TODO: The viscosity should drag us if our neighbors are of the 
+        //  same material no? But also water gas flowing up in water
+        //  should be dragged down. So maybe we only compute the drag based
+        //  on where we want to go in the first place and our neighbors.
 
-        // Clamp velocities
-        const maxVel = material.state === MaterialState.Gas ? 5 :
-                       material.state === MaterialState.Liquid ? 3 : 2;
-        vx = Math.max(-maxVel, Math.min(maxVel, vx));
-        vy = Math.max(-maxVel, Math.min(maxVel, vy));
+        // Viscosity drag
+        //const viscosity = material.viscosity / 255;
+        //const drag = 1 - viscosity * 0.5;
+        //vx *= drag;
+        //vy *= drag;
+
 
         grid.set(x, y, Cell.setVelocity(cell, vx, vy));
       }

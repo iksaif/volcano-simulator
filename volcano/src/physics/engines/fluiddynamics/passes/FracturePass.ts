@@ -4,9 +4,9 @@ import { Grid } from '../../../../core/Grid';
 import { Cell } from '../../../../core/Cell';
 import { MaterialRegistry } from '../../../../materials/MaterialRegistry';
 import { MaterialState, MaterialType } from '../../../../core/Types';
-
-export class FracturePass {
-  static execute(grid: Grid, _gravity: number): void {
+import type { IPhysicsEnginePass } from "../../../IPhysicsEngine";
+export class FracturePass implements IPhysicsEnginePass {
+  execute(grid: Grid, _: number): void {
     for (let y = 0; y < grid.height; y++) {
       for (let x = 0; x < grid.width; x++) {
         const cell = grid.get(x, y);
@@ -51,6 +51,7 @@ export class FracturePass {
 
           // Break if integrity too low
           if (newIntegrity < 0.3) {
+            // TODO: don't convert to lava, just break clusters.
             // Convert to debris (granular) or lava if hot
             const newMaterialId = temp > 800 ? MaterialType.Lava : MaterialType.Rock;
             let newCell = new Cell(newMaterialId, temp, cell.pressure, 0);
@@ -72,7 +73,7 @@ export class FracturePass {
     }
   }
 
-  private static countSolidNeighborsBelow(grid: Grid, x: number, y: number): number {
+  private  countSolidNeighborsBelow(grid: Grid, x: number, y: number): number {
     let count = 0;
     for (const [dx, dy] of [[0, 1], [-1, 1], [1, 1]]) {
       const nx = x + dx;
@@ -90,7 +91,7 @@ export class FracturePass {
     return count;
   }
 
-  private static getFluidPressureBelow(grid: Grid, x: number, y: number): number {
+  private  getFluidPressureBelow(grid: Grid, x: number, y: number): number {
     let maxPressure = 0;
     for (const dy of [1, 2]) {
       const ny = y + dy;

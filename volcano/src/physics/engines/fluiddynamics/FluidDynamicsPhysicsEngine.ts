@@ -9,9 +9,10 @@ import { FracturePass } from './passes/FracturePass';
 import { ForcesPass } from './passes/ForcesPass';
 import { MotionPass } from './passes/MotionPass';
 import { LiquidCorrectionPass } from './passes/LiquidCorrectionPass';
-import { InteractionsPass } from './passes/InteractionsPass';
 import { ThermalDiffusionPass } from './passes/ThermalDiffusionPass';
-import { CrustFormationPass } from './passes/CrustFormationPass';
+import { CompressGasPass } from './passes/CompressGasPass';
+import { DecompressGasPass } from './passes/DecompressGasPass';
+import type { IPhysicsEnginePass } from '../../../physics/IPhysicsEngine';
 
 /**
  * Fluid Dynamics Physics Engine
@@ -26,9 +27,23 @@ import { CrustFormationPass } from './passes/CrustFormationPass';
 export class FluidDynamicsPhysicsEngine implements IPhysicsEngine {
   private gravity: number = 9.8; // m/s²
   private time: number = 0;
+  private passes: IPhysicsEnginePass[] = [];
 
   constructor() {
     // Initialize passes
+    this.passes = [
+      new PhaseTransitionPass(),
+      new SolidStructurePass(),
+      new FracturePass(),
+      new CompressGasPass(),
+      new DecompressGasPass(),
+      new ForcesPass(this.gravity),
+      new MotionPass(),
+      // TODO: Pass to update density based on pressure / temperature
+      // TODO: add pressure diffusion
+      new LiquidCorrectionPass(this.gravity),
+      new ThermalDiffusionPass(),
+    ];
   }
 
   getName(): string {
@@ -43,31 +58,8 @@ export class FluidDynamicsPhysicsEngine implements IPhysicsEngine {
     this.time += deltaTime / 1000; // Convert ms to seconds
     const dt = deltaTime / 1000; // Work in seconds
 
-    // Pass 1: Phase & material transitions
-    PhaseTransitionPass.execute(grid, dt);
-
-    // Pass 2: Solid structure & anchoring (cluster detection)
-    SolidStructurePass.execute(grid);
-
-    // Pass 3: Rock stress & fracture
-    FracturePass.execute(grid, this.gravity);
-
-    // Pass 4: Forces (gravity, buoyancy, viscosity)
-    ForcesPass.execute(grid, this.gravity, dt);
-
-    // Pass 5: Motion (discrete cell movement)
-    MotionPass.execute(grid, dt);
-
-    // Pass 6: Incompressible liquid correction
-    LiquidCorrectionPass.execute(grid, this.gravity);
-
-    // Pass 7: Interactions (lava/rock/water/gas)
-    InteractionsPass.execute(grid, dt);
-
-    // Pass 8: Thermal diffusion & heat capacity
-    ThermalDiffusionPass.execute(grid, dt);
-
-    // Pass 9: Crust formation / rock binding
-    CrustFormationPass.execute(grid);
+    for (const pass of this.passes) {
+      pass.execute(grid, dt);
+    }
   }
 }

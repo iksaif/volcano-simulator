@@ -3,9 +3,9 @@
 import { Grid } from '../../../../core/Grid';
 import { Cell } from '../../../../core/Cell';
 import { MaterialRegistry } from '../../../../materials/MaterialRegistry';
-
-export class ThermalDiffusionPass {
-  static execute(grid: Grid, dt: number): void {
+import type { IPhysicsEnginePass } from "../../../IPhysicsEngine";
+export class ThermalDiffusionPass implements IPhysicsEnginePass {
+  execute(grid: Grid, dt: number): void {
     const tempChanges: number[][] = Array(grid.height).fill(0).map(() => Array(grid.width).fill(0));
 
     for (let y = 0; y < grid.height; y++) {

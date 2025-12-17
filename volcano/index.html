@@ -269,6 +269,97 @@
       text-align: center;
       padding: 20px;
     }
+
+    /* Configuration button */
+    #config-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 40px;
+      height: 40px;
+      background: #2a2a2a;
+      border: 2px solid #666;
+      border-radius: 50%;
+      color: #aaa;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      z-index: 100;
+    }
+
+    #config-button:hover {
+      background: #3a3a3a;
+      border-color: #ff6b35;
+      color: #ff6b35;
+      transform: rotate(90deg);
+    }
+
+    /* Modal overlay */
+    #config-modal,
+    #hotkey-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #config-modal.open,
+    #hotkey-modal.open {
+      display: flex;
+    }
+
+    /* Modal dialog */
+    .config-dialog {
+      background: #2a2a2a;
+      border: 2px solid #ff6b35;
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .config-dialog h2 {
+      margin-bottom: 20px;
+      color: #ff6b35;
+      text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+    }
+
+    .config-close {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 24px;
+      cursor: pointer;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.3s;
+    }
+
+    .config-close:hover {
+      color: #ff6b35;
+    }
+
+    .hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -286,37 +377,23 @@
   </div>
 
   <div id="control-panel">
-    <h2>🌋 Volcano Simulator</h2>
-
-    <div class="slider-group">
-      <label>Injection Rate: <span id="rate-value">0.5</span></label>
-      <input type="range" id="injection-rate" min="0" max="10" step="0.5" value="0.5">
+    <div style="position: relative;">
+      <h2>🌋 Volcano Simulator</h2>
+      <button id="config-button" title="Configuration">⚙️</button>
     </div>
 
-    <div class="slider-group">
-      <label>Lava Temperature: <span id="temp-value">1500</span>°C</label>
-      <input type="range" id="lava-temp" min="800" max="2000" step="50" value="1500">
+    <div style="background: #1a1a1a; padding: 12px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #444;">
+      <h3 style="margin: 0 0 10px 0; font-size: 12px; color: #ff6b35;">Injection Shaft</h3>
+      <div style="font-size: 11px; line-height: 1.6;">
+        <div>Position: <span id="shaft-position" style="color: #ff9800;">0</span></div>
+        <div>Width: <span id="shaft-width" style="color: #ff9800;">1</span></div>
+        <div>Rate: <span id="shaft-rate" style="color: #ff9800;">0.5</span></div>
+      </div>
     </div>
-
-    <div class="slider-group">
-      <label>Physics Speed: <span id="physics-rate-value">20</span> FPS</label>
-      <input type="range" id="physics-rate" min="5" max="60" step="5" value="20">
-    </div>
-
-    <h3>Renderer</h3>
-    <div class="renderer-buttons">
-      <button id="renderer-pixel" class="active">Pixel</button>
-      <button id="renderer-webgl">Smooth (WebGL)</button>
-    </div>
-
-    <h3>Physics Engine</h3>
-    <select id="physics-engine" class="physics-engine-select">
-      <option value="cellular">Cellular Automaton</option>
-    </select>
 
     <div style="margin-top: 10px;">
-      <button id="debug-toggle" style="width: 100%; padding: 8px; background: #1a1a1a; color: #0f0; border: 1px solid #0f0; border-radius: 4px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold;">
-        🔍 TOGGLE DEBUG MODE
+      <button id="pause-resume-toggle" style="width: 100%; padding: 8px; background: #1a1a1a; color: #ff9800; border: 1px solid #ff9800; border-radius: 4px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold;">
+        ⏸️ PAUSE PHYSICS
       </button>
     </div>
 
@@ -330,6 +407,7 @@
       <button data-material="vapor">☁️ Vapor</button>
       <button data-material="air">💨 Air</button>
       <button data-material="grass">🌱 Grass</button>
+      <button data-material="ash">⚫ Ash</button>
       <button data-material="empty">⬛ Empty</button>
     </div>
 
@@ -340,9 +418,102 @@
 
     <div class="info">
       <strong>Controls:</strong><br>
-      • Click bottom to inject lava<br>
+      • Arrow keys: Move/resize shaft<br>
+      • +/- keys: Adjust injection rate<br>
       • Paint with selected material<br>
-      • Watch temperature colors!
+      • Press H for all hotkeys
+    </div>
+  </div>
+
+  <!-- Configuration Modal -->
+  <div id="config-modal">
+    <div class="config-dialog">
+      <button class="config-close" id="config-close">×</button>
+      <h2>⚙️ Configuration</h2>
+
+      <div class="slider-group">
+        <label>Lava Temperature: <span id="temp-value">1500</span>°C</label>
+        <input type="range" id="lava-temp" min="800" max="2000" step="50" value="1500">
+      </div>
+
+      <div class="slider-group">
+        <label>Physics Speed: <span id="physics-rate-value">20</span> FPS</label>
+        <input type="range" id="physics-rate" min="5" max="60" step="5" value="20">
+      </div>
+
+      <h3>Renderer</h3>
+      <div class="renderer-buttons">
+        <button id="renderer-pixel" class="active">Pixel</button>
+        <button id="renderer-webgl">Smooth (WebGL)</button>
+      </div>
+
+      <h3>Physics Engine</h3>
+      <select id="physics-engine" class="physics-engine-select">
+        <option value="cellular">Cellular Automaton</option>
+      </select>
+
+      <div style="margin-top: 20px;">
+        <button id="debug-toggle" style="width: 100%; padding: 8px; background: #1a1a1a; color: #0f0; border: 1px solid #0f0; border-radius: 4px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold;">
+          🔍 TOGGLE DEBUG MODE
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hotkey Help Modal -->
+  <div id="hotkey-modal">
+    <div class="config-dialog">
+      <button class="config-close" id="hotkey-close">×</button>
+      <h2>⌨️ Keyboard Shortcuts</h2>
+
+      <div style="margin-top: 20px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid #444;">
+              <th style="text-align: left; padding: 8px; color: #ff6b35;">Key</th>
+              <th style="text-align: left; padding: 8px; color: #ff6b35;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">H</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Show this help dialog</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">←</kbd> <kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">→</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Move injection shaft left/right</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">↑</kbd> <kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">↓</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Increase/decrease shaft width</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">+</kbd> <kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">-</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Increase/decrease injection rate</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">T</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Temperature visualization mode</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">P</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Pressure visualization mode</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">N</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Normal visualization mode</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">D</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Toggle debug mode</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">Esc</kbd></td>
+              <td style="padding: 8px;">Close dialogs</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 

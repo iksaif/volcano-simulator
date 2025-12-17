@@ -4,14 +4,15 @@ import { Grid } from '../../../../core/Grid';
 import { Cell } from '../../../../core/Cell';
 import { MaterialRegistry } from '../../../../materials/MaterialRegistry';
 import { MaterialState } from '../../../../core/Types';
-
-export class SolidStructurePass {
-  static execute(grid: Grid): void {
+import type { IPhysicsEnginePass } from "../../../IPhysicsEngine";
+export class SolidStructurePass implements IPhysicsEnginePass {
+  execute(grid: Grid, _: number): void {
     // Reset all cluster IDs and anchored flags
     for (let y = 0; y < grid.height; y++) {
       for (let x = 0; x < grid.width; x++) {
         const cell = grid.get(x, y);
         if (!Cell.isEmpty(cell)) {
+          // TODO: do we care about anchored cells?
           grid.set(x, y, Cell.setClusterId(Cell.setAnchored(cell, false), -1));
         }
       }
@@ -51,7 +52,7 @@ export class SolidStructurePass {
     }
   }
 
-  private static floodFill(grid: Grid, startX: number, startY: number, visited: Set<string>): Set<string> {
+  private floodFill(grid: Grid, startX: number, startY: number, visited: Set<string>): Set<string> {
     const cluster = new Set<string>();
     const queue: [number, number][] = [[startX, startY]];
 
@@ -84,7 +85,7 @@ export class SolidStructurePass {
     return cluster;
   }
 
-  private static isClusterAnchored(cluster: Set<string>, grid: Grid): boolean {
+  private isClusterAnchored(cluster: Set<string>, grid: Grid): boolean {
     for (const pos of cluster) {
       const [x, y] = pos.split(',').map(Number);
       // Anchored if touching bottom or sides of world

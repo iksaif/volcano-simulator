@@ -6,7 +6,6 @@ import { Renderer } from './rendering/Renderer';
 import { WebGLRenderer } from './rendering/WebGLRenderer';
 import { Config } from './app/Config';
 import { PerformanceMonitor } from './utils/PerformanceMonitor';
-import { MaterialType } from './core/Types';
 import { MaterialRegistry } from './materials/MaterialRegistry';
 import { ColorMapper } from './rendering/ColorMapper';
 import { PhysicsEngineRegistry } from './physics/PhysicsEngineRegistry';
@@ -14,6 +13,7 @@ import type { IPhysicsEngine } from './physics/IPhysicsEngine';
 import { InputManager } from './input/InputManager';
 import { UIManager } from './ui/UIManager';
 import { PhysicsDebugger } from './utils/PhysicsDebugger';
+import { WorldGenerator } from './world/WorldGenerator';
 
 // Visualization modes
 const VisualizationMode = {
@@ -114,6 +114,14 @@ function init() {
   // Current renderer (start with pixel)
   let currentRenderer: Renderer | WebGLRenderer = pixelRenderer;
 
+  // Initialize world with ground and shaft opening
+  WorldGenerator.initializeWorld(
+    grid,
+    15, // Ground depth (15 cells from bottom)
+    Math.floor(grid.width / 2), // Shaft position (center)
+    1 // Shaft width (1 cell)
+  );
+
   // Create physics engine (default to cellular)
   let physics: IPhysicsEngine = PhysicsEngineRegistry.create('cellular');
 
@@ -201,21 +209,83 @@ function init() {
     });
   }
 
-  let groundLevel = grid.height - 15;
-  // Create initial ground (rock at bottom)
-  for (let y = groundLevel; y < grid.height; y++) {
-    for (let x = 0; x < grid.width; x++) {
-      const cell = Cell.create(MaterialType.Rock, 20, 0);
-      grid.set(x, y, cell);
-    }
+  // Pause/Resume physics toggle
+  let isPaused = false;
+  const pauseResumeButton = document.getElementById('pause-resume-toggle');
+  if (pauseResumeButton) {
+    pauseResumeButton.addEventListener('click', () => {
+      isPaused = !isPaused;
+      if (isPaused) {
+        pauseResumeButton.textContent = '▶️ RESUME PHYSICS';
+        pauseResumeButton.style.color = '#4caf50';
+        pauseResumeButton.style.borderColor = '#4caf50';
+        console.log('⏸️  Physics paused');
+      } else {
+        pauseResumeButton.textContent = '⏸️ PAUSE PHYSICS';
+        pauseResumeButton.style.color = '#ff9800';
+        pauseResumeButton.style.borderColor = '#ff9800';
+        console.log('▶️  Physics resumed');
+      }
+    });
   }
-  // Fill the rest of the grid with air
-  for (let y = 0; y < groundLevel; y++) {
-    for (let x = 0; x < grid.width; x++) {
-      const cell = Cell.create(MaterialType.Air, 20, 0);
-      grid.set(x, y, cell);
+
+  // Configuration modal
+  const configButton = document.getElementById('config-button');
+  const configModal = document.getElementById('config-modal');
+  const configClose = document.getElementById('config-close');
+
+  if (configButton && configModal) {
+    // Open modal
+    configButton.addEventListener('click', () => {
+      configModal.classList.add('open');
+    });
+
+    // Close modal on close button
+    if (configClose) {
+      configClose.addEventListener('click', () => {
+        configModal.classList.remove('open');
+      });
     }
+
+    // Close modal on backdrop click
+    configModal.addEventListener('click', (e) => {
+      if (e.target === configModal) {
+        configModal.classList.remove('open');
+      }
+    });
   }
+
+  // Hotkey help modal
+  const hotkeyModal = document.getElementById('hotkey-modal');
+  const hotkeyClose = document.getElementById('hotkey-close');
+
+  if (hotkeyModal) {
+    // Close modal on close button
+    if (hotkeyClose) {
+      hotkeyClose.addEventListener('click', () => {
+        hotkeyModal.classList.remove('open');
+      });
+    }
+
+    // Close modal on backdrop click
+    hotkeyModal.addEventListener('click', (e) => {
+      if (e.target === hotkeyModal) {
+        hotkeyModal.classList.remove('open');
+      }
+    });
+  }
+
+  // Close modals on Escape key
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (configModal?.classList.contains('open')) {
+        configModal.classList.remove('open');
+      }
+      if (hotkeyModal?.classList.contains('open')) {
+        hotkeyModal.classList.remove('open');
+      }
+    }
+  });
 
   // Color mapping function that switches based on mode
   const getColor = (cell: Cell): number => {
@@ -244,9 +314,95 @@ function init() {
     });
   }
 
-  // Debug hotkeys
+  // Update shaft status display
+  function updateShaftStatus(): void {
+    const positionEl = document.getElementById('shaft-position');
+    const widthEl = document.getElementById('shaft-width');
+    const rateEl = document.getElementById('shaft-rate');
+
+    if (positionEl) positionEl.textContent = inputManager.lavaInjector.getShaftPosition().toString();
+    if (widthEl) widthEl.textContent = inputManager.lavaInjector.getShaftWidth().toString();
+    if (rateEl) rateEl.textContent = inputManager.lavaInjector.getRate().toFixed(1);
+  }
+
+  // Initial update
+  updateShaftStatus();
+
+  // Keyboard hotkeys
   window.addEventListener('keydown', (e) => {
+    // Shaft controls
+    switch (e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        inputManager.lavaInjector.moveLeft();
+        WorldGenerator.updateShaftOpening(
+          grid,
+          15,
+          inputManager.lavaInjector.getShaftPosition(),
+          inputManager.lavaInjector.getShaftWidth()
+        );
+        updateShaftStatus();
+        console.log(`⬅️  Shaft moved to position ${inputManager.lavaInjector.getShaftPosition()}`);
+        return;
+      case 'ArrowRight':
+        e.preventDefault();
+        inputManager.lavaInjector.moveRight();
+        WorldGenerator.updateShaftOpening(
+          grid,
+          15,
+          inputManager.lavaInjector.getShaftPosition(),
+          inputManager.lavaInjector.getShaftWidth()
+        );
+        updateShaftStatus();
+        console.log(`➡️  Shaft moved to position ${inputManager.lavaInjector.getShaftPosition()}`);
+        return;
+      case 'ArrowUp':
+        e.preventDefault();
+        inputManager.lavaInjector.increaseWidth();
+        WorldGenerator.updateShaftOpening(
+          grid,
+          15,
+          inputManager.lavaInjector.getShaftPosition(),
+          inputManager.lavaInjector.getShaftWidth()
+        );
+        updateShaftStatus();
+        console.log(`⬆️  Shaft width increased to ${inputManager.lavaInjector.getShaftWidth()}`);
+        return;
+      case 'ArrowDown':
+        e.preventDefault();
+        inputManager.lavaInjector.decreaseWidth();
+        WorldGenerator.updateShaftOpening(
+          grid,
+          15,
+          inputManager.lavaInjector.getShaftPosition(),
+          inputManager.lavaInjector.getShaftWidth()
+        );
+        updateShaftStatus();
+        console.log(`⬇️  Shaft width decreased to ${inputManager.lavaInjector.getShaftWidth()}`);
+        return;
+      case '+':
+      case '=':
+        e.preventDefault();
+        inputManager.lavaInjector.increaseRate();
+        updateShaftStatus();
+        console.log(`➕  Injection rate increased to ${inputManager.lavaInjector.getRate()}`);
+        return;
+      case '-':
+      case '_':
+        e.preventDefault();
+        inputManager.lavaInjector.decreaseRate();
+        updateShaftStatus();
+        console.log(`➖  Injection rate decreased to ${inputManager.lavaInjector.getRate()}`);
+        return;
+    }
+
+    // Other hotkeys
     switch (e.key.toLowerCase()) {
+      case 'h':
+        if (hotkeyModal) {
+          hotkeyModal.classList.add('open');
+        }
+        break;
       case 't':
         visualizationMode = VisualizationMode.Temperature;
         console.log('🌡️  Temperature visualization mode');
@@ -290,14 +446,19 @@ function init() {
     let physicsSteps = 0;
     const maxPhysicsSteps = 5; // Prevent spiral of death
 
-    while (physicsAccumulator >= physicsTimestep && physicsSteps < maxPhysicsSteps) {
-      physics.update(grid, physicsTimestep);
-      physicsAccumulator -= physicsTimestep;
-      physicsSteps++;
-    }
+    if (!isPaused) {
+      while (physicsAccumulator >= physicsTimestep && physicsSteps < maxPhysicsSteps) {
+        physics.update(grid, physicsTimestep);
+        physicsAccumulator -= physicsTimestep;
+        physicsSteps++;
+      }
 
-    // If we hit max steps, reset accumulator to prevent catching up forever
-    if (physicsSteps >= maxPhysicsSteps) {
+      // If we hit max steps, reset accumulator to prevent catching up forever
+      if (physicsSteps >= maxPhysicsSteps) {
+        physicsAccumulator = 0;
+      }
+    } else {
+      // When paused, reset accumulator to prevent physics catch-up when resumed
       physicsAccumulator = 0;
     }
 

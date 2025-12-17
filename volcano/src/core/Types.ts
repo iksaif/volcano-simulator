@@ -10,6 +10,7 @@ export const MaterialType = {
   Air: 6,
   Grass: 7,
   Ice: 8,
+  Ash: 9,
 } as const;
 
 export type MaterialType = typeof MaterialType[keyof typeof MaterialType];

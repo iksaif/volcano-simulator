@@ -5,8 +5,9 @@ import { Cell } from '../../../../core/Cell';
 import { MaterialRegistry } from '../../../../materials/MaterialRegistry';
 import { MaterialState } from '../../../../core/Types';
 
-export class PhaseTransitionPass {
-  static execute(grid: Grid, dt: number): void {
+import type { IPhysicsEnginePass } from "../../../IPhysicsEngine";
+export class PhaseTransitionPass implements IPhysicsEnginePass {
+  execute(grid: Grid, dt: number): void {
     for (let y = 0; y < grid.height; y++) {
       for (let x = 0; x < grid.width; x++) {
         const cell = grid.get(x, y);
@@ -26,6 +27,9 @@ export class PhaseTransitionPass {
               const newCell = new Cell(material.lowTransitionTo, temp, cell.pressure, cell.flags);
               grid.set(x, y, newCell);
             }
+            // TODO: If we condense we should transform a few other surrounding cells to air (~=empty)
+            // TODO: Or we create empty, air cells will move around to fill the space, and we always make
+            //   air replace the empty cells in the border of the grid.
           } else {
             // Immediate transition
             const newCell = new Cell(material.lowTransitionTo, temp, cell.pressure, cell.flags);
@@ -48,6 +52,7 @@ export class PhaseTransitionPass {
                 const ny = y + dy;
                 if (grid.inBounds(nx, ny)) {
                   const neighbor = grid.get(nx, ny);
+                  // TODO: we should check if the neighbor is empty or air (we assume air is like empty to simplify things)
                   if (Cell.isEmpty(neighbor)) {
                     const expandCell = new Cell(material.highTransitionTo, temp * 0.8, cell.pressure * 0.5, 0);
                     grid.set(nx, ny, expandCell);

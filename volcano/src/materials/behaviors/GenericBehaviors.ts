@@ -6,6 +6,8 @@ import { MaterialState } from '../../core/Types';
 import { MaterialRegistry } from '../MaterialRegistry';
 import { tryMove, isRestingOnSomething, randomDirection } from './PhysicsUtils';
 
+// TODO Move this to cellular physics engine
+
 /**
  * Check if a solid particle has structural support (for bridging behavior)
  * Returns object with hasSupport boolean and supportCount number

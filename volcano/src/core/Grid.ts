@@ -2,6 +2,9 @@
 
 import { Cell } from './Cell';
 
+export type GridIterationOrder = 'top_left_bottom_right' | 'random' | 'random_within_lines';
+export type NeighborIterationOrder = 'clockwise' | 'random';
+
 export class Grid {
   private cells: Cell[];
   public readonly width: number;
@@ -120,5 +123,102 @@ export class Grid {
    */
   getRawArray(): Cell[] {
     return this.cells;
+  }
+
+  /**
+   * Apply a function to all cells in the grid
+   * @param fn - Function to apply, receives (grid, x, y)
+   * @param order - Iteration order: 'top_left_bottom_right' (default), 'random', or 'random_within_lines'
+   */
+  apply(fn: (grid: Grid, x: number, y: number) => void, order: GridIterationOrder = 'top_left_bottom_right'): void {
+    if (order === 'random') {
+      // Fully random order
+      const coords: Array<{ x: number; y: number }> = [];
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          coords.push({ x, y });
+        }
+      }
+
+      // Fisher-Yates shuffle
+      for (let i = coords.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [coords[i], coords[j]] = [coords[j], coords[i]];
+      }
+
+      // Apply function in random order
+      for (const { x, y } of coords) {
+        fn(this, x, y);
+      }
+    } else if (order === 'random_within_lines') {
+      // Process lines top to bottom, but randomize order within each line
+      for (let y = 0; y < this.height; y++) {
+        // Create array of x coordinates for this line
+        const xCoords: number[] = [];
+        for (let x = 0; x < this.width; x++) {
+          xCoords.push(x);
+        }
+
+        // Fisher-Yates shuffle within the line
+        for (let i = xCoords.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [xCoords[i], xCoords[j]] = [xCoords[j], xCoords[i]];
+        }
+
+        // Apply function in randomized order within this line
+        for (const x of xCoords) {
+          fn(this, x, y);
+        }
+      }
+    } else {
+      // Default: top-left to bottom-right
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          fn(this, x, y);
+        }
+      }
+    }
+  }
+
+  /**
+   * Apply a function to all neighbors of a cell
+   * @param x - X coordinate of the center cell
+   * @param y - Y coordinate of the center cell
+   * @param fn - Function to apply, receives (grid, neighborX, neighborY, direction)
+   *             direction is one of: 'top', 'left', 'right', 'bottom'
+   * @param order - Iteration order: 'clockwise' (top, right, bottom, left) or 'random'
+   */
+  applyNeighbors(
+    x: number,
+    y: number,
+    fn: (grid: Grid, neighborX: number, neighborY: number, direction: string) => void,
+    order: NeighborIterationOrder = 'clockwise'
+  ): void {
+    // Define neighbors: [dx, dy, direction]
+    const neighbors: Array<[number, number, string]> = [
+      [0, -1, 'top'],
+      [1, 0, 'right'],
+      [0, 1, 'bottom'],
+      [-1, 0, 'left'],
+    ];
+
+    if (order === 'random') {
+      // Fisher-Yates shuffle
+      for (let i = neighbors.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [neighbors[i], neighbors[j]] = [neighbors[j], neighbors[i]];
+      }
+    }
+
+    // Apply function to each neighbor
+    for (const [dx, dy, direction] of neighbors) {
+      const nx = x + dx;
+      const ny = y + dy;
+
+      // Only call function if neighbor is within bounds
+      if (this.inBounds(nx, ny)) {
+        fn(this, nx, ny, direction);
+      }
+    }
   }
 }

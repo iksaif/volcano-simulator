@@ -4,6 +4,8 @@ import { Grid } from '../../core/Grid';
 import { Cell } from '../../core/Cell';
 import { updateGas } from './GenericBehaviors';
 
+// TODO Move this to cellular physics engine
+
 /**
  * Vapor is a gas that rises, spreads, and cools over time
  * Uses generic gas behavior plus passive cooling

@@ -5,6 +5,9 @@ import { Cell } from '../../core/Cell';
 import { MaterialState } from '../../core/Types';
 import { MaterialRegistry } from '../MaterialRegistry';
 
+
+// TODO Move this to cellular physics engine
+
 /**
  * Try to move a cell to a new position
  * Returns true if move was successful
@@ -48,20 +51,11 @@ export function tryMove(
       return false;
     }
 
-    // IMPORTANT: Prevent gas teleportation
-    // Check if this is an upward displacement (dy < 0)
-    // Don't displace a cell upward if it was already displaced upward this frame
-    // This prevents cascading upward swaps in a single frame (bottom-to-top iteration)
-    const dy = toY - fromY;
-    if (dy < 0 && Cell.wasDisplacedUpward(targetCell)) {
-      return false;
-    }
-
     // Solids can displace fluids and gases (when falling)
     if (currentMaterial.state === MaterialState.Solid) {
       grid.set(toX, toY, currentCell);
       // Mark target cell as displaced upward if moving up
-      const displacedCell = dy < 0 ? Cell.setDisplacedUpward(targetCell) : targetCell;
+      const displacedCell = targetCell;
       grid.set(fromX, fromY, displacedCell);
       return true;
     }
@@ -78,7 +72,7 @@ export function tryMove(
     // Swap cells (denser material displaces lighter material)
     grid.set(toX, toY, currentCell);
     // Mark target cell as displaced upward if moving up
-    const displacedCell = dy < 0 ? Cell.setDisplacedUpward(targetCell) : targetCell;
+    const displacedCell = targetCell
     grid.set(fromX, fromY, displacedCell);
     return true;
   }

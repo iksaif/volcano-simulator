@@ -24,3 +24,15 @@ export interface IPhysicsEngine {
    */
   update(grid: Grid, deltaTime: number): void;
 }
+
+/**
+ * Interface for physics engine passes
+ */
+export interface IPhysicsEnginePass {
+  /**
+   * Execute the pass
+   * @param grid The grid to update
+   * @param deltaTime Time elapsed since last update (ms)
+   */
+  execute(grid: Grid, deltaTime: number): void;
+}

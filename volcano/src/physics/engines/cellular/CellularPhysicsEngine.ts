@@ -8,6 +8,7 @@ import { ThermalDiffusion } from './ThermalDiffusion';
 import { StateTransitions } from './StateTransitions';
 import { PressureComputation } from './PressureComputation';
 import { GrassGrowth } from './GrassGrowth';
+import { MaterialType } from '../../../core/Types';
 
 export class CellularPhysicsEngine implements IPhysicsEngine {
   private enableThermal: boolean;
@@ -58,6 +59,9 @@ export class CellularPhysicsEngine implements IPhysicsEngine {
 
     // Phase 6: Grass growth (ecosystem simulation)
     GrassGrowth.update(grid);
+
+    // Phase 7: Fill empty cells with air
+    this.fillEmptyCellsWithAir(grid);
   }
 
   /**
@@ -69,7 +73,6 @@ export class CellularPhysicsEngine implements IPhysicsEngine {
       if (!Cell.isEmpty(cell)) {
         // Clear both processed (bit 0) and displaced upward (bit 1) flags
         let clearedCell = Cell.clearProcessed(cell);
-        clearedCell = Cell.clearDisplacedUpward(clearedCell);
         grid.setUnsafe(i, clearedCell);
       }
     }
@@ -100,6 +103,17 @@ export class CellularPhysicsEngine implements IPhysicsEngine {
         const updatedCell = grid.get(x, y);
         if (!Cell.isEmpty(updatedCell)) {
           grid.set(x, y, Cell.setProcessed(updatedCell));
+        }
+      }
+    }
+  }
+
+  private fillEmptyCellsWithAir(grid: Grid): void {
+    for (let y = 0; y < grid.height; y++) {
+      for (let x = 0; x < grid.width; x++) {
+        const cell = grid.get(x, y);
+        if (Cell.isEmpty(cell)) {
+          grid.set(x, y, new Cell(MaterialType.Air, 20, 0, 0));
         }
       }
     }
