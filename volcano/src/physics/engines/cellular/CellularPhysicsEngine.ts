@@ -13,10 +13,21 @@ import { MaterialType } from '../../../core/Types';
 export class CellularPhysicsEngine implements IPhysicsEngine {
   private enableThermal: boolean;
   private enablePressure: boolean;
+  private readonly thermalDiffusion: ThermalDiffusion;
+  private readonly stateTransitions: StateTransitions;
+  private readonly pressureComputation: PressureComputation;
+  private readonly grassGrowth: GrassGrowth;
 
   constructor(enablePressure = true, enableThermal = true) {
     this.enableThermal = enableThermal;
     this.enablePressure = enablePressure;
+
+    // Initialize physics passes
+    this.thermalDiffusion = new ThermalDiffusion();
+    this.stateTransitions = new StateTransitions();
+    this.pressureComputation = new PressureComputation();
+    this.grassGrowth = new GrassGrowth();
+
     // Initialize material rules
     MaterialRules.init();
   }
@@ -32,35 +43,30 @@ export class CellularPhysicsEngine implements IPhysicsEngine {
   /**
    * Update the simulation state
    */
-  update(grid: Grid, _deltaTime: number): void {
+  update(grid: Grid, deltaTime: number): void {
     // Phase 0: Clear all processed flags from previous frame
     this.clearProcessedFlags(grid);
 
     // Phase 1: Material movement (bottom-up to prevent teleportation)
     this.updateMaterialMovement(grid);
 
-    // Phase 2: Weight-based pressure computation (hydrostatic pressure from depth/density)
+    // Phase 2: Pressure computation (weight + diffusion)
     if (this.enablePressure) {
-      PressureComputation.computeWeightPressure(grid);
+      this.pressureComputation.execute(grid, deltaTime);
     }
 
-    // Phase 3: Pressure diffusion (fluids equalize pressure)
-    if (this.enablePressure) {
-      PressureComputation.diffusePressure(grid);
-    }
-
-    // Phase 4: Thermal diffusion (if enabled)
+    // Phase 3: Thermal diffusion (if enabled)
     if (this.enableThermal) {
-      ThermalDiffusion.update(grid);
+      this.thermalDiffusion.execute(grid, deltaTime);
     }
 
-    // Phase 5: State transitions (check temperature thresholds)
-    StateTransitions.update(grid);
+    // Phase 4: State transitions (check temperature thresholds)
+    this.stateTransitions.execute(grid, deltaTime);
 
-    // Phase 6: Grass growth (ecosystem simulation)
-    GrassGrowth.update(grid);
+    // Phase 5: Grass growth (ecosystem simulation)
+    this.grassGrowth.execute(grid, deltaTime);
 
-    // Phase 7: Fill empty cells with air
+    // Phase 6: Fill empty cells with air
     this.fillEmptyCellsWithAir(grid);
   }
 
@@ -68,14 +74,14 @@ export class CellularPhysicsEngine implements IPhysicsEngine {
    * Clear processed and displaced flags from all cells
    */
   private clearProcessedFlags(grid: Grid): void {
-    for (let i = 0; i < grid.size; i++) {
-      const cell = grid.getUnsafe(i);
+    grid.apply((g, x, y) => {
+      const cell = g.get(x, y);
       if (!Cell.isEmpty(cell)) {
         // Clear both processed (bit 0) and displaced upward (bit 1) flags
-        let clearedCell = Cell.clearProcessed(cell);
-        grid.setUnsafe(i, clearedCell);
+        const clearedCell = Cell.clearProcessed(cell);
+        g.set(x, y, clearedCell);
       }
-    }
+    });
   }
 
   /**
@@ -108,15 +114,16 @@ export class CellularPhysicsEngine implements IPhysicsEngine {
     }
   }
 
+  /**
+   * Fill empty cells with air
+   */
   private fillEmptyCellsWithAir(grid: Grid): void {
-    for (let y = 0; y < grid.height; y++) {
-      for (let x = 0; x < grid.width; x++) {
-        const cell = grid.get(x, y);
-        if (Cell.isEmpty(cell)) {
-          grid.set(x, y, new Cell(MaterialType.Air, 20, 0, 0));
-        }
+    grid.apply((g, x, y) => {
+      const cell = g.get(x, y);
+      if (Cell.isEmpty(cell)) {
+        g.set(x, y, Cell.create(MaterialType.Air, 20, 0));
       }
-    }
+    });
   }
 
   /**

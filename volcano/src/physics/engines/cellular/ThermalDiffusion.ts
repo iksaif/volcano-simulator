@@ -4,12 +4,19 @@ import { Grid } from '../../../core/Grid';
 import { Cell } from '../../../core/Cell';
 import { MaterialRegistry } from '../../../materials/MaterialRegistry';
 import { Config } from '../../../app/Config';
+import type { IPhysicsEnginePass } from '../../IPhysicsEngine';
 
-export class ThermalDiffusion {
+export class ThermalDiffusion implements IPhysicsEnginePass {
+  private readonly minTemperature = Config.ABSOLUTE_MIN_TEMPERATURE;
+  private readonly maxTemperature = Config.MAX_TEMPERATURE;
+  private readonly diffusionRate = Config.THERMAL_DIFFUSION_RATE;
+
   /**
-   * Update heat transfer across the grid
+   * Execute thermal diffusion pass
+   * @param grid - The simulation grid
+   * @param _deltaTime - Time step (unused, diffusion is frame-based)
    */
-  static update(grid: Grid): void {
+  public execute(grid: Grid, _deltaTime: number): void {
     // Use a temporary buffer to avoid feedback loops
     const tempBuffer = new Float32Array(grid.size);
 
@@ -20,6 +27,7 @@ export class ThermalDiffusion {
     }
 
     // Diffusion phase: average with neighbors
+    // Skip edges (y: 1 to height-1, x: 1 to width-1)
     for (let y = 1; y < grid.height - 1; y++) {
       for (let x = 1; x < grid.width - 1; x++) {
         const idx = y * grid.width + x;
@@ -39,14 +47,13 @@ export class ThermalDiffusion {
           4;
 
         // Apply diffusion based on thermal conductivity
-        const diffusionRate =
-          material.thermalConductivity * Config.THERMAL_DIFFUSION_RATE;
-        const newTemp = centerTemp + (avgTemp - centerTemp) * diffusionRate;
+        const materialDiffusionRate = material.thermalConductivity * this.diffusionRate;
+        const newTemp = centerTemp + (avgTemp - centerTemp) * materialDiffusionRate;
 
         // Clamp temperature to physical bounds (absolute zero to max temp)
         const clampedTemp = Math.max(
-          Config.ABSOLUTE_MIN_TEMPERATURE,
-          Math.min(Config.MAX_TEMPERATURE, newTemp)
+          this.minTemperature,
+          Math.min(this.maxTemperature, newTemp)
         );
 
         // Write back to grid

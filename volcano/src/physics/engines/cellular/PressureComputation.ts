@@ -4,15 +4,28 @@ import { Grid } from '../../../core/Grid';
 import { Cell } from '../../../core/Cell';
 import { MaterialRegistry } from '../../../materials/MaterialRegistry';
 import { MaterialState } from '../../../core/Types';
+import type { IPhysicsEnginePass } from '../../IPhysicsEngine';
 
-export class PressureComputation {
+export class PressureComputation implements IPhysicsEnginePass {
   // Pressure scale: 0-10000 range for direct float storage
-  private static readonly PRESSURE_SCALE = 10000;
+  private readonly PRESSURE_SCALE = 10000;
+  private readonly DIFFUSION_RATE = 0.15;
+
+  /**
+   * Execute pressure computation pass (both weight and diffusion)
+   * @param grid - The simulation grid
+   * @param _deltaTime - Time step (unused, pressure is frame-based)
+   */
+  public execute(grid: Grid, _deltaTime: number): void {
+    this.computeWeightPressure(grid);
+    this.diffusePressure(grid);
+  }
+
   /**
    * Phase 1: Compute weight-based pressure for all cells
    * Pressure increases with depth (hydrostatic pressure)
    */
-  static computeWeightPressure(grid: Grid): void {
+  private computeWeightPressure(grid: Grid): void {
     // Iterate from top to bottom to compute pressure based on weight above
     for (let y = 0; y < grid.height; y++) {
       for (let x = 0; x < grid.width; x++) {
@@ -55,7 +68,7 @@ export class PressureComputation {
    * Compute gas pressure (low, slightly increases with depth)
    * Returns pressure in 0-10000 scale
    */
-  private static computeGasPressure(grid: Grid, _x: number, y: number): number {
+  private computeGasPressure(grid: Grid, _x: number, y: number): number {
     // Base atmospheric pressure (100 in new scale, ~1% of max)
     let pressure = 100;
 
@@ -71,7 +84,7 @@ export class PressureComputation {
    * Where ρ = density, g = gravity, h = depth
    * Returns pressure in 0-10000 scale
    */
-  private static computeLiquidPressure(
+  private computeLiquidPressure(
     grid: Grid,
     x: number,
     y: number,
@@ -103,7 +116,7 @@ export class PressureComputation {
    * Compute solid pressure (pressure from weight above)
    * Returns pressure in 0-10000 scale
    */
-  private static computeSolidPressure(
+  private computeSolidPressure(
     grid: Grid,
     x: number,
     y: number,
@@ -143,8 +156,7 @@ export class PressureComputation {
    * Gases and liquids equalize pressure over time (like thermal diffusion)
    * Works with stored pressure values (0-255) directly
    */
-  static diffusePressure(grid: Grid): void {
-    const DIFFUSION_RATE = 0.15; // How fast pressure equalizes
+  private diffusePressure(grid: Grid): void {
 
     // Create temporary storage for new pressures (avoid feedback loops)
     const newPressures = new Map<number, number>();
@@ -197,7 +209,7 @@ export class PressureComputation {
 
         // Diffusion rate modified by viscosity (high viscosity = slow diffusion)
         const viscosityFactor = 1 - (material.viscosity / 255);
-        const effectiveDiffusionRate = DIFFUSION_RATE * viscosityFactor;
+        const effectiveDiffusionRate = this.DIFFUSION_RATE * viscosityFactor;
 
         // Interpolate between current and average pressure
         const newPressure = currentPressure + (avgPressure - currentPressure) * effectiveDiffusionRate;

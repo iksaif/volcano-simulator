@@ -4,118 +4,119 @@ import { Grid } from '../../../core/Grid';
 import { Cell } from '../../../core/Cell';
 import { MaterialRegistry } from '../../../materials/MaterialRegistry';
 import { MaterialState } from '../../../core/Types';
+import type { IPhysicsEnginePass } from '../../IPhysicsEngine';
 
-export class StateTransitions {
+export class StateTransitions implements IPhysicsEnginePass {
   /**
-   * Update all cells for state transitions
+   * Execute state transition pass
+   * @param grid - The simulation grid
+   * @param _deltaTime - Time step (unused, transitions are frame-based)
    */
-  static update(grid: Grid): void {
-    for (let y = 0; y < grid.height; y++) {
-      for (let x = 0; x < grid.width; x++) {
-        const cell = grid.get(x, y);
-        if (Cell.isEmpty(cell)) continue;
+  public execute(grid: Grid, _deltaTime: number): void {
+    grid.apply((g, x, y) => {
+      const cell = g.get(x, y);
+      if (Cell.isEmpty(cell)) return;
 
-        const materialId = Cell.getMaterialId(cell);
-        const temp = Cell.getTemperature(cell);
+      const materialId = Cell.getMaterialId(cell);
+      const temp = Cell.getTemperature(cell);
 
-        const material = MaterialRegistry.get(materialId);
+      const material = MaterialRegistry.get(materialId);
 
-        // Check cooling threshold (e.g., lava → rock, vapor → water)
-        if (temp < material.minTemp && material.lowTransitionTo !== undefined) {
-          // Call custom callback if defined
-          if (material.canTransition && !material.canTransition(cell, x, y, grid)) {
-            continue;
-          }
+      // Check cooling threshold (e.g., lava → rock, vapor → water)
+      if (temp < material.minTemp && material.lowTransitionTo !== undefined) {
+        // Call custom callback if defined
+        if (material.canTransition && !material.canTransition(cell, x, y, g)) {
+          return;
+        }
 
-          // Check if this is a probabilistic transition (gas → liquid)
-          const targetMaterial = MaterialRegistry.get(material.lowTransitionTo);
+        // Check if this is a probabilistic transition (gas → liquid)
+        const targetMaterial = MaterialRegistry.get(material.lowTransitionTo);
 
-          // If material is gas transitioning to liquid with condensation probability
-          if (
-            material.state === MaterialState.Gas &&
-            targetMaterial.state === MaterialState.Liquid &&
-            material.condensationProbability !== undefined
-          ) {
-            // Calculate probability based on temperature delta
-            const tempDelta = material.minTemp - temp;
-            const baseProbability = material.condensationProbability;
+        // If material is gas transitioning to liquid with condensation probability
+        if (
+          material.state === MaterialState.Gas &&
+          targetMaterial.state === MaterialState.Liquid &&
+          material.condensationProbability !== undefined
+        ) {
+          // Calculate probability based on temperature delta
+          const tempDelta = material.minTemp - temp;
+          const baseProbability = material.condensationProbability;
 
-            // Increase probability with temperature: +8% per 100°C below threshold
-            // e.g., at 2% base and 10°C below: 2% + (10/100)*8% = 2.8%
-            const tempFactor = tempDelta / 100;
-            const probability = Math.min(baseProbability + tempFactor * 0.08, 0.1);
+          // Increase probability with temperature: +8% per 100°C below threshold
+          // e.g., at 2% base and 10°C below: 2% + (10/100)*8% = 2.8%
+          const tempFactor = tempDelta / 100;
+          const probability = Math.min(baseProbability + tempFactor * 0.08, 0.1);
 
-            // Random roll - skip transition if failed
-            if (Math.random() >= probability) {
-              continue;
-            }
-          }
-
-          // Use custom transition handler or default
-          if (material.onTransition) {
-            const newCell = material.onTransition(cell, x, y, grid);
-            grid.set(x, y, newCell);
-          } else {
-            // Check if we need to compress (e.g., vapor → water)
-
-            // If target material expands when going the other direction, we should compress
-            if (
-              targetMaterial.highTransitionTo === material.id &&
-              targetMaterial.expansionRatio &&
-              targetMaterial.expansionRatio > 1
-            ) {
-              const compressionRatio = targetMaterial.expansionRatio;
-
-              // Convert current cell to target material
-              grid.set(x, y, Cell.create(material.lowTransitionTo, temp, 0));
-
-              // Remove nearby cells to simulate compression (e.g., 4 vapor → 1 water)
-              this.compressMaterial(grid, x, y, material.id, compressionRatio - 1);
-            } else {
-              // Normal 1:1 conversion
-              const newCell = Cell.create(material.lowTransitionTo, temp, 0);
-              grid.set(x, y, newCell);
-            }
+          // Random roll - skip transition if failed
+          if (Math.random() >= probability) {
+            return;
           }
         }
-        // Check heating threshold (e.g., water → vapor, rock → lava)
-        else if (temp > material.maxTemp && material.highTransitionTo !== undefined) {
-          // Call custom callback if defined
-          if (material.canTransition && !material.canTransition(cell, x, y, grid)) {
-            continue;
-          }
 
-          // Use custom transition handler or default
-          if (material.onTransition) {
-            const newCell = material.onTransition(cell, x, y, grid);
-            grid.set(x, y, newCell);
+        // Use custom transition handler or default
+        if (material.onTransition) {
+          const newCell = material.onTransition(cell, x, y, g);
+          g.set(x, y, newCell);
+        } else {
+          // Check if we need to compress (e.g., vapor → water)
+
+          // If target material expands when going the other direction, we should compress
+          if (
+            targetMaterial.highTransitionTo === material.id &&
+            targetMaterial.expansionRatio &&
+            targetMaterial.expansionRatio > 1
+          ) {
+            const compressionRatio = targetMaterial.expansionRatio;
+
+            // Convert current cell to target material
+            g.set(x, y, Cell.create(material.lowTransitionTo, temp, 0));
+
+            // Remove nearby cells to simulate compression (e.g., 4 vapor → 1 water)
+            this.compressMaterial(g, x, y, material.id, compressionRatio - 1);
           } else {
-            // Check if we need to expand (e.g., water → vapor)
-            if (material.expansionRatio && material.expansionRatio > 1) {
-              const expansionCount = Math.floor(material.expansionRatio);
-              const targetMaterial = material.highTransitionTo;
-
-              // Create primary cell at current position
-              grid.set(x, y, Cell.create(targetMaterial, temp, 0));
-
-              // Create additional cells for expansion
-              this.expandMaterial(grid, x, y, targetMaterial, temp, expansionCount - 1);
-            } else {
-              // Normal 1:1 conversion
-              const newCell = Cell.create(material.highTransitionTo, temp, 0);
-              grid.set(x, y, newCell);
-            }
+            // Normal 1:1 conversion
+            const newCell = Cell.create(material.lowTransitionTo, temp, 0);
+            g.set(x, y, newCell);
           }
         }
       }
-    }
+      // Check heating threshold (e.g., water → vapor, rock → lava)
+      else if (temp > material.maxTemp && material.highTransitionTo !== undefined) {
+        // Call custom callback if defined
+        if (material.canTransition && !material.canTransition(cell, x, y, g)) {
+          return;
+        }
+
+        // Use custom transition handler or default
+        if (material.onTransition) {
+          const newCell = material.onTransition(cell, x, y, g);
+          g.set(x, y, newCell);
+        } else {
+          // Check if we need to expand (e.g., water → vapor)
+          if (material.expansionRatio && material.expansionRatio > 1) {
+            const expansionCount = Math.floor(material.expansionRatio);
+            const targetMaterial = material.highTransitionTo;
+
+            // Create primary cell at current position
+            g.set(x, y, Cell.create(targetMaterial, temp, 0));
+
+            // Create additional cells for expansion
+            this.expandMaterial(g, x, y, targetMaterial, temp, expansionCount - 1);
+          } else {
+            // Normal 1:1 conversion
+            const newCell = Cell.create(material.highTransitionTo, temp, 0);
+            g.set(x, y, newCell);
+          }
+        }
+      }
+    });
   }
 
   /**
    * Expand material by creating additional cells in nearby empty spaces
    * Uses random scatter pattern to distribute expansion cells
    */
-  private static expandMaterial(
+  private expandMaterial(
     grid: Grid,
     centerX: number,
     centerY: number,
@@ -165,7 +166,7 @@ export class StateTransitions {
    * Compress material by removing nearby cells of the same type
    * When 4 vapor cells condense, they should become 1 water cell
    */
-  private static compressMaterial(
+  private compressMaterial(
     grid: Grid,
     centerX: number,
     centerY: number,
