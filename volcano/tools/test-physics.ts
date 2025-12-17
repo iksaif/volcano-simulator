@@ -28,6 +28,7 @@ if (testName === 'help') {
   console.log('  rock-pile        Test that stacked rocks don\'t disappear');
   console.log('  pass-by-pass     Test each physics pass individually');
   console.log('  basic            Test basic physics (rock/water/gas)');
+  console.log('  velocity         Test velocity tracking in cellular engine');
   console.log('');
   console.log('Options:');
   console.log('  --engine=<name>  Physics engine to use (default: fluiddynamics)');
@@ -48,6 +49,8 @@ if (testName === 'air-stability') {
   testPassByPass();
 } else if (testName === 'basic') {
   testBasicPhysics();
+} else if (testName === 'velocity') {
+  testVelocity();
 } else {
   console.error(`Unknown test: ${testName}`);
   console.log('Run with "help" to see available tests');
@@ -337,6 +340,92 @@ function testBasicPhysics() {
   } else {
     console.log('❌ Gas did not rise');
   }
+}
+
+function testVelocity() {
+  console.log('🧪 VELOCITY TRACKING TEST');
+  console.log('='.repeat(60));
+  console.log(`Grid: ${gridSize}x${gridSize}, Frames: ${frames}, Engine: ${engineId}\n`);
+
+  const engine = PhysicsEngineRegistry.create(engineId);
+  const grid = new Grid(gridSize, gridSize);
+
+  // Create a simple falling scenario - lava in air
+  const startY = 2;
+  const startX = Math.floor(gridSize / 2);
+  grid.set(startX, startY, new Cell(MaterialType.Lava, 1200, 0, 0, 0, 0, 1, -1, false));
+
+  console.log(`Initial: Lava at (${startX}, ${startY})`);
+  console.log('Running simulation and checking velocities after each frame...\n');
+
+  const dt = 50;
+  let totalCellsWithVelocity = 0;
+
+  for (let frame = 0; frame < frames; frame++) {
+    engine.update(grid, dt);
+
+    // Count and report cells with non-zero velocity
+    let cellsWithVelocity = 0;
+    let maxVelocity = 0;
+    const cellsWithVelocityDetails: Array<{x: number, y: number, vx: number, vy: number}> = [];
+
+    for (let y = 0; y < grid.height; y++) {
+      for (let x = 0; x < grid.width; x++) {
+        const cell = grid.get(x, y);
+        if (Cell.isEmpty(cell)) continue;
+
+        const vx = cell.vx;
+        const vy = cell.vy;
+        const magnitude = Math.sqrt(vx * vx + vy * vy);
+
+        if (magnitude > 0.01) {
+          cellsWithVelocity++;
+          cellsWithVelocityDetails.push({x, y, vx, vy});
+          if (magnitude > maxVelocity) maxVelocity = magnitude;
+        }
+      }
+    }
+
+    if (cellsWithVelocity > 0) {
+      totalCellsWithVelocity += cellsWithVelocity;
+    }
+
+    // Report every 10 frames or if we have velocity
+    if (frame % 10 === 0 || cellsWithVelocity > 0) {
+      console.log(`Frame ${frame.toString().padStart(3)}: ${cellsWithVelocity} cells with velocity, max magnitude: ${maxVelocity.toFixed(2)}`);
+
+      // Show first few cells with velocity
+      if (cellsWithVelocity > 0 && frame < 30) {
+        const showCount = Math.min(5, cellsWithVelocityDetails.length);
+        for (let i = 0; i < showCount; i++) {
+          const c = cellsWithVelocityDetails[i];
+          console.log(`  Cell at (${c.x},${c.y}): velocity (${c.vx.toFixed(2)}, ${c.vy.toFixed(2)})`);
+        }
+        if (cellsWithVelocityDetails.length > showCount) {
+          console.log(`  ... and ${cellsWithVelocityDetails.length - showCount} more`);
+        }
+      }
+    }
+
+    // Find where the lava ended up
+    if (frame % 10 === 0) {
+      const lavaPos = findMaterial(grid, MaterialType.Lava);
+      if (lavaPos !== null) {
+        console.log(`  Lava position: y=${lavaPos}`);
+      }
+    }
+  }
+
+  console.log('\n' + '='.repeat(60));
+  if (totalCellsWithVelocity > 0) {
+    console.log(`✅ TEST PASSED: Detected ${totalCellsWithVelocity} total cell-frames with velocity`);
+  } else {
+    console.log('❌ TEST FAILED: No cells had velocity during entire simulation');
+    console.log('   This means velocities are not being set or are being cleared immediately');
+  }
+
+  console.log('\nFinal grid:');
+  printGrid(grid);
 }
 
 // Helper functions

@@ -82,7 +82,17 @@ export class Cell {
    * Set temperature in cell (returns new cell)
    */
   static setTemperature(cell: Cell, temp: number): Cell {
-    const newCell = new Cell(cell.materialId, temp, cell.pressure, cell.flags);
+    const newCell = new Cell(
+      cell.materialId,
+      temp,
+      cell.pressure,
+      cell.flags,
+      cell.vx,  // Preserve velocity
+      cell.vy,
+      cell.integrity,
+      cell.clusterId,
+      cell.anchored
+    );
     return newCell;
   }
 
@@ -97,7 +107,17 @@ export class Cell {
    * Set pressure in cell (returns new cell)
    */
   static setPressure(cell: Cell, pressure: number): Cell {
-    const newCell = new Cell(cell.materialId, cell.temperature, pressure, cell.flags);
+    const newCell = new Cell(
+      cell.materialId,
+      cell.temperature,
+      pressure,
+      cell.flags,
+      cell.vx,  // Preserve velocity
+      cell.vy,
+      cell.integrity,
+      cell.clusterId,
+      cell.anchored
+    );
     return newCell;
   }
 
@@ -112,7 +132,17 @@ export class Cell {
    * Set flags in cell (returns new cell)
    */
   static setFlags(cell: Cell, flags: number): Cell {
-    const newCell = new Cell(cell.materialId, cell.temperature, cell.pressure, flags);
+    const newCell = new Cell(
+      cell.materialId,
+      cell.temperature,
+      cell.pressure,
+      flags,
+      cell.vx,  // Preserve velocity
+      cell.vy,
+      cell.integrity,
+      cell.clusterId,
+      cell.anchored
+    );
     return newCell;
   }
 

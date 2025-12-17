@@ -38,6 +38,10 @@ export function tryMove(
   // Skip if source is empty (already moved)
   if (Cell.isEmpty(currentCell)) return false;
 
+  // Calculate movement delta for velocity
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+
   // Displacement logic using material states and density
   if (!Cell.isEmpty(targetCell)) {
     const currentMaterialId = Cell.getMaterialId(currentCell);
@@ -53,9 +57,12 @@ export function tryMove(
 
     // Solids can displace fluids and gases (when falling)
     if (currentMaterial.state === MaterialState.Solid) {
-      grid.set(toX, toY, currentCell);
-      // Mark target cell as displaced upward if moving up
-      const displacedCell = targetCell;
+      // Set velocity based on movement direction
+      const cellWithVelocity = Cell.setVelocity(currentCell, dx, dy);
+      grid.set(toX, toY, cellWithVelocity);
+
+      // Displaced cell moves in opposite direction
+      const displacedCell = Cell.setVelocity(targetCell, -dx, -dy);
       grid.set(fromX, fromY, displacedCell);
       return true;
     }
@@ -70,17 +77,22 @@ export function tryMove(
     }
 
     // Swap cells (denser material displaces lighter material)
-    grid.set(toX, toY, currentCell);
-    // Mark target cell as displaced upward if moving up
-    const displacedCell = targetCell
+    const cellWithVelocity = Cell.setVelocity(currentCell, dx, dy);
+    grid.set(toX, toY, cellWithVelocity);
+
+    // Displaced cell moves in opposite direction
+    const displacedCell = Cell.setVelocity(targetCell, -dx, -dy);
     grid.set(fromX, fromY, displacedCell);
     return true;
   }
 
   // Move to empty space
-  grid.set(toX, toY, currentCell);
+  const cellWithVelocity = Cell.setVelocity(currentCell, dx, dy);
+  grid.set(toX, toY, cellWithVelocity);
+
   // Leave source empty (void - no material)
   grid.set(fromX, fromY, Cell.create(0, 0, 0));
+
   return true;
 }
 

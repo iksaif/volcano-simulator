@@ -100,7 +100,7 @@ function init() {
   const grid = new Grid(Config.GRID_WIDTH, Config.GRID_HEIGHT);
 
   // Create pixel renderer on its own canvas (native grid resolution)
-  const pixelRenderer = new Renderer(pixelCanvas, Config.GRID_WIDTH, Config.GRID_HEIGHT);
+  const pixelRenderer = new Renderer(pixelCanvas, Config.GRID_WIDTH, Config.GRID_HEIGHT, 4);
 
   // Try to create WebGL renderer on separate canvas (same grid resolution, WebGL handles smooth upscaling)
   let webglRenderer: WebGLRenderer | null = null;
@@ -131,6 +131,9 @@ function init() {
 
   // Visualization mode state
   let visualizationMode: VisualizationMode = VisualizationMode.Normal;
+
+  // Velocity overlay toggle
+  let showVelocityOverlay: boolean = false;
 
   // Renderer switching
   const pixelButton = document.getElementById('renderer-pixel');
@@ -415,6 +418,10 @@ function init() {
         visualizationMode = VisualizationMode.Normal;
         console.log('👁️  Normal visualization mode');
         break;
+      case 'v':
+        showVelocityOverlay = !showVelocityOverlay;
+        console.log(showVelocityOverlay ? '🏹 Velocity overlay enabled' : '🏹 Velocity overlay disabled');
+        break;
       case 'd':
         PhysicsDebugger.toggle();
         break;
@@ -470,6 +477,11 @@ function init() {
     // Render (always happens once per frame, regardless of physics rate)
     currentRenderer.render(grid, getColor);
 
+    // Draw velocity overlay if enabled
+    if (showVelocityOverlay) {
+      currentRenderer.drawVelocityOverlay(grid, 3.0, 6, 0.5);
+    }
+
     // Draw cursor overlay and update info panel if mouse is on canvas
     const mousePos = inputManager.getMousePosition();
     if (mousePos) {
@@ -492,7 +504,7 @@ function init() {
 
   console.log('🌋 Volcano simulator initialized!');
   console.log(`Grid size: ${Config.GRID_WIDTH}x${Config.GRID_HEIGHT}`);
-  console.log('Debug hotkeys: [T]emperature | [P]ressure | [N]ormal');
+  console.log('Debug hotkeys: [T]emperature | [P]ressure | [N]ormal | [V]elocity overlay');
 }
 
 // Start the application when DOM is ready

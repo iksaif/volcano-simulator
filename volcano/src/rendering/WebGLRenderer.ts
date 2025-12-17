@@ -559,6 +559,21 @@ export class WebGLRenderer {
   }
 
   /**
+   * Draw velocity vectors as arrows overlay
+   * Note: WebGL renderer doesn't support 2D overlay drawing
+   * TODO: Implement using separate 2D overlay canvas if needed
+   */
+  drawVelocityOverlay(
+    _grid: Grid,
+    _scale?: number,
+    _spacing?: number,
+    _minMagnitude?: number
+  ): void {
+    // Would require a separate 2D overlay canvas or WebGL-based rendering
+    // For now, velocity overlay only works in pixel renderer mode
+  }
+
+  /**
    * Clear the canvas
    */
   clear(): void {
