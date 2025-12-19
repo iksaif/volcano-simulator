@@ -6,10 +6,10 @@ import { MaterialType, MaterialState } from '../../../core/Types';
 import { MaterialRegistry } from '../../../materials/MaterialRegistry';
 
 // Import generic behaviors
-import { updateSolid, updateLiquid, updateGas } from '../../../materials/behaviors/GenericBehaviors';
+import { updateSolid, updateLiquid, updateGas } from './behaviors/GenericBehaviors';
 
 // Import custom material behaviors (only those with special logic)
-import { updateVapor } from '../../../materials/behaviors/VaporBehavior';
+import { updateVapor } from './behaviors/VaporBehavior';
 
 type UpdateFunction = (grid: Grid, x: number, y: number, cell: Cell) => void;
 
