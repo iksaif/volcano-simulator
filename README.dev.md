@@ -193,10 +193,15 @@ npm run test
 
 ## 📚 Additional Resources
 
-- [Cellular Engine Documentation](src/physics/engines/cellular/README.md)
-- [Cellular Engine (French)](src/physics/engines/cellular/README.fr.md)
-- [Material Types](src/core/Types.ts)
-- [Material Registry](src/materials/MaterialRegistry.ts)
+### Documentation
+- **[🧪 Materials Reference](docs/Materials.md)** - Complete materials guide with properties and phase transitions
+  - [🇫🇷 Version française](docs/Materials.fr.md)
+- **[⚙️ Cellular Engine](src/physics/engines/cellular/README.md)** - Physics engine documentation
+  - [🇫🇷 Version française](src/physics/engines/cellular/README.fr.md)
+
+### Code Reference
+- [Material Types](src/core/Types.ts) - Type definitions
+- [Material Registry](src/materials/MaterialRegistry.ts) - Material properties implementation
 
 ## 💡 Development Tips
 

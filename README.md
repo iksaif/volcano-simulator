@@ -7,7 +7,7 @@
 
   ![Volcano Physics Simulator](https://img.shields.io/badge/physics-simulation-orange) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
-  **[🚀 Live Demo](https://iksaif.github.io/volcano-simulator/)** | [👨‍💻 Development Guide](README.dev.md)
+  **[🚀 Live Demo](https://iksaif.github.io/volcano-simulator/)** | [👨‍💻 Development Guide](README.dev.md) | [🧪 Materials Reference](docs/Materials.md)
 </div>
 
 ## ✨ Features
@@ -82,6 +82,14 @@ For development setup, see **[Development Guide](README.dev.md)**.
 - **Settings**: Adjust simulation parameters
 - **Statistics**: View performance metrics
 
+## 📚 Documentation
+
+- **[🧪 Materials Reference](docs/Materials.md)** - Complete guide to all materials, properties, and phase transitions
+  - [🇫🇷 Version française](docs/Materials.fr.md)
+- **[👨‍💻 Development Guide](README.dev.md)** - Setup, architecture, and contributing guidelines
+- **[⚙️ Cellular Engine](src/physics/engines/cellular/README.md)** - How the physics simulation works
+  - [🇫🇷 Version française](src/physics/engines/cellular/README.fr.md)
+
 ## 🤝 Contributing
 
 Contributions welcome! Please submit issues and pull requests.
@@ -106,3 +114,9 @@ Inspired by falling sand games and cellular automaton simulations.
 - [ ] 📱 Mobile touch support
 - [ ] 💾 Save/load simulations
 - [ ] ⚗️ Material mixing and chemical reactions
+
+---
+
+<div align="center">
+  <sub>Made with humans 👨‍💻 using AI 🤖 🤝</sub>
+</div>

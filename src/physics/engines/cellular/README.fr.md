@@ -30,9 +30,9 @@ Les matériaux se déplacent selon leur état physique :
 
 - **Solides** : Tombent verticalement, peuvent déplacer liquides/gaz, forment des ponts stables quand froids
 - **Liquides** : Tombent vers le bas, s'étalent en diagonale, s'écoulent horizontalement au repos (taux dépend de la viscosité)
-- **Gaz** : Se comportent actuellement comme les liquides (flottabilité à venir)
+- **Gaz** : Se comportent actuellement comme les liquides
 
-Le mouvement utilise une **itération de bas en haut** pour empêcher les particules de bouger plusieurs fois par image.
+Le mouvement utilise un ordre aléatoire pour éviter les blocages.
 
 **Déplacement basé sur la densité** : Les matériaux plus denses coulent et poussent les plus légers vers le haut. Chaque matériau a une densité de base modifiée par la température (l'expansion thermique rend les matériaux chauds plus légers).
 
@@ -49,11 +49,11 @@ flux_chaleur = k × (T_voisin - T_cellule) × dt
 Où `k` est la conductivité thermique du matériau (facilité de circulation de la chaleur). Les matériaux ont différentes valeurs de conductivité.
 
 ```
-    20°C          22°C
-     ↑             ↑
+    20°C                22°C
+     ↑                   ↑
 20°C→100°C→20°C  →  22°C→94°C→22°C
-     ↓             ↓
-    20°C          22°C
+     ↓                   ↓
+    20°C                22°C
 ```
 
 ## Phase 3 : Transitions d'État ♨️
@@ -70,22 +70,20 @@ Les matériaux changent d'état à des températures spécifiques :
 La pression s'accumule depuis le poids des matériaux au-dessus. Les matériaux lourds créent une haute pression en dessous.
 
 ```
-    💨   P=0        (l'air est léger)
-    🌊  P=1000      (l'eau ajoute du poids)
+    💨   P=0         (l'air est léger)
+    🌊   P=1000      (l'eau ajoute du poids)
     🪨   P=5700      (la roche est lourde !)
 ```
 
 **Effets** :
 - Une pression élevée peut faire s'effondrer les ponts
 - Force du pont = `densité × (1 + facteur_refroidissement) × supports`
-- Entraînera l'écoulement des fluides (pas encore implémenté)
 
 ## Phase 5 : Comportements Spéciaux 🌱
 
 Logique spécifique aux matériaux :
 
 - **Croissance de l'herbe** : Se propage vers la roche/cendre voisine avec faible probabilité, nécessite une température modérée
-- **Refroidissement de la vapeur** : La vapeur refroidit graduellement vers la température ambiante
 
 ## Fichiers Clés
 
@@ -153,9 +151,12 @@ Surveiller :
 
 ## Problèmes Connus
 
-- ☁️ Les gaz utilisent le comportement liquide (devraient monter par flottabilité)
 - ⚡ Pas de pression dynamique de vélocité encore
 - 🔄 Masse pas parfaitement conservée dans les changements de phase
 - 🎲 Les solides ne tournent pas
 
-Voir la documentation principale pour les limitations complètes et la feuille de route.
+## Voir Aussi
+
+- **[🧪 Référence des Matériaux](../../../docs/Materials.fr.md)** - Propriétés détaillées et transitions de phase pour tous les matériaux
+- **[README Principal](../../../README.md)** - Contrôles, fonctionnalités et feuille de route
+- **[Guide de Développement](../../../README.dev.md)** - Architecture et contribution
