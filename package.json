@@ -1,0 +1,19 @@
+{
+  "name": "volcano",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "npm run test:cellular",
+    "test:cellular": "tsx tools/test-physics.ts basic --engine=cellular && tsx tools/test-physics.ts velocity --engine=cellular",
+    "test-physics": "tsx tools/test-physics.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4"
+  }
+}
