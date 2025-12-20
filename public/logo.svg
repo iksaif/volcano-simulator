@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="#1a1a2e" stroke="#ff6b35" stroke-width="3"/>
+
+  <!-- Volcano mountain -->
+  <path d="M 40 150 L 75 80 L 85 80 L 90 65 L 95 80 L 105 80 L 110 65 L 115 80 L 125 80 L 160 150 Z"
+        fill="#5a5a6e" stroke="#3a3a4e" stroke-width="2"/>
+
+  <!-- Crater opening -->
+  <ellipse cx="100" cy="72" rx="15" ry="8" fill="#2a2a3e"/>
+
+  <!-- Lava stream left -->
+  <path d="M 92 72 Q 85 90, 82 110 Q 80 125, 78 150"
+        fill="none" stroke="#ff6b35" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 92 72 Q 85 90, 82 110 Q 80 125, 78 150"
+        fill="none" stroke="#ffd93d" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Lava stream right -->
+  <path d="M 108 72 Q 115 90, 118 110 Q 120 125, 122 150"
+        fill="none" stroke="#ff6b35" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 108 72 Q 115 90, 118 110 Q 120 125, 122 150"
+        fill="none" stroke="#ffd93d" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Lava particles/sparks -->
+  <circle cx="85" cy="55" r="2" fill="#ff6b35">
+    <animate attributeName="cy" values="55;35;55" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="95" cy="50" r="2.5" fill="#ffd93d">
+    <animate attributeName="cy" values="50;25;50" dur="2.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.2;1" dur="2.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="105" cy="52" r="2" fill="#ff6b35">
+    <animate attributeName="cy" values="52;30;52" dur="2.2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.3;1" dur="2.2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="115" cy="58" r="2.5" fill="#ffd93d">
+    <animate attributeName="cy" values="58;38;58" dur="1.8s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.2;1" dur="1.8s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Smoke/vapor clouds -->
+  <circle cx="80" cy="45" r="6" fill="#6a6a7e" opacity="0.6">
+    <animate attributeName="cy" values="45;20;45" dur="4s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.6;0;0.6" dur="4s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="120" cy="40" r="7" fill="#6a6a7e" opacity="0.5">
+    <animate attributeName="cy" values="40;15;40" dur="4.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.5;0;0.5" dur="4.5s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Ground/base -->
+  <rect x="20" y="150" width="160" height="5" fill="#3a3a4e"/>
+</svg>

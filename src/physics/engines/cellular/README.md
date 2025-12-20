@@ -26,300 +26,66 @@ The engine runs in phases each frame:
 
 ## Phase 1: Material Movement 🔄
 
-Materials move based on their physical state.
+Materials move based on their physical state:
 
-### Solids (🪨 Rock, 🧊 Ice)
+- **Solids**: Fall straight down, can displace liquids/gases, form stable bridges when cold
+- **Liquids**: Fall down, spread diagonally, flow horizontally at rest (rate depends on viscosity)
+- **Gases**: Currently behave like liquids (buoyancy coming soon)
 
-```
-Before:          After:
-    ·              ·
-    █              ·
-    ·              █
-```
+Movement uses **bottom-up iteration** to prevent particles from moving multiple times per frame.
 
-- Fall straight down
-- Can't displace other solids
-- Can displace liquids/gases
-- **Cold solids bridge**: Form stable structures when cold enough
+**Density-based displacement**: Denser materials sink and push lighter ones up. Each material has a base density that's modified by temperature (thermal expansion makes hot materials lighter).
 
-```
-Bridge formation:
-
-    █·········█        Support points
-    ·█·······█·        Cold particles stick together
-    ··█·····█··        Bridge holds until pressure too high
-    ···█···█···
-    ····███····
-```
-
-### Liquids (🌊 Water, 🌋 Lava)
-
-```
-Before:          After:
-    ·              ·
-    ~              ·
-    ·              ~
-   ███            ~███~
-```
-
-- Fall down (guaranteed)
-- Spread diagonally when falling
-- Flow horizontally when resting
-- Flow rate depends on viscosity
-  - 🌊 Water (low viscosity): Flows fast
-  - 🌋 Lava (high viscosity): Flows slowly
-
-### Gases (💨 Air, ☁️ Vapor)
-
-```
-Before:          After:
-   ~~~            °°°
-   ~~~            °°°
-    °              ~~~
-    ·              ~~~
-```
-
-- Currently behave like liquids (buoyancy coming)
-- Will rise due to density differences
+**Viscosity** (0-255 scale): Controls flow rate. Higher viscosity = slower flow.
 
 ## Phase 2: Thermal Diffusion 🌡️
 
-Heat flows between neighboring cells based on temperature difference.
+Heat flows between neighboring cells based on temperature difference:
 
 ```
-Hot cell spreads heat to neighbors:
+heat_flow = k × (T_neighbor - T_cell) × dt
+```
 
+Where `k` is the material's thermal conductivity (how easily heat flows). Materials have different conductivity values.
+
+```
     20°C          22°C
      ↑             ↑
-20°C→100°C→20°C  becomes  22°C→94°C→22°C
+20°C→100°C→20°C  →  22°C→94°C→22°C
      ↓             ↓
     20°C          22°C
 ```
 
-**Formula**: `heat_flow = k × (T_neighbor - T_cell) × dt`
-
-Where:
-- `k` = thermal conductivity (how easily heat flows)
-- Higher k = faster heat transfer
-
-**Material conductivity** (0-1 scale):
-- 🌋 Lava: 0.8 (excellent conductor)
-- 🌊 Water: 0.6 (good conductor)
-- 🪨 Rock: 0.3 (moderate conductor)
-- 💨 Air: 0.026 (poor conductor/insulator)
-
 ## Phase 3: State Transitions ♨️
 
-Materials change state at specific temperatures.
+Materials change state at specific temperatures:
 
-### Melting 🪨➜🌋
-
-```
-Rock at 1200°C:
-
-    🪨🪨🪨
-    🔥🔥🔥
-
-    ↓
-
-    🌋🌋🌋
-    🔥🔥🔥
-```
-
-- 🧊 Ice → 🌊 Water at 0°C
-- 🪨 Rock → 🌋 Lava at 1200°C
-
-### Freezing 🌊➜🧊
-
-```
-Water at 0°C:
-
-    🌊🌊🌊
-    🧊🧊🧊
-
-    ↓
-
-    🧊🧊🧊
-    🧊🧊🧊
-```
-
-- 🌊 Water → 🧊 Ice at 0°C
-- 🌋 Lava → 🪨 Rock below 1000°C
-
-### Boiling 🌊➜☁️
-
-```
-Water boils and expands:
-
-    ·  ·  ·              ☁️ ☁️ ☁️
-    ·  🌊 ·      →      ☁️ ☁️ ☁️
-    ·  ·  ·              ☁️ ☁️ ☁️
-
-1 water cell becomes 4 vapor cells
-(simulates ~1600× real volume expansion)
-```
-
-- 🌊 Water → ☁️ Vapor at 100°C
-- Expands 4× (1 cell → 4 cells)
-
-### Condensation ☁️➜🌊
-
-```
-Vapor condenses probabilistically:
-
-    ☁️☁️☁️           ☁️🌊☁️
-    ☁️☁️☁️    →     ☁️☁️☁️
-    ☁️☁️☁️           ☁️☁️🌊
-
-Not instant - happens gradually
-```
-
-- ☁️ Vapor → 🌊 Water below 100°C
-- 2% base chance per frame
-- Chance increases when much colder
-- Prevents instant condensation
+- **Melting**: Ice → Water (0°C), Rock → Lava (1200°C)
+- **Freezing**: Water → Ice (0°C), Lava → Rock (<1000°C)
+- **Boiling**: Water → Vapor (100°C), expands 4× (simulates volume expansion)
+- **Condensation**: Vapor → Water (<100°C), probabilistic to avoid instant condensation
 
 ## Phase 4: Pressure Computation ⚖️
 
-Pressure comes from weight of materials above.
+Pressure accumulates from the weight of materials above. Heavy materials create high pressure below.
 
 ```
-Pressure accumulation (top to bottom):
-
     💨   P=0        (air is light)
-    💨   P=1
     🌊  P=1000      (water adds weight)
-    🌊  P=2000
-    🌊  P=3000
     🪨   P=5700      (rock is heavy!)
 ```
 
 **Effects**:
-- Heavy materials on top create high pressure below
 - High pressure can collapse bridges
-- Drives fluid flow (not yet implemented)
-
-**Bridge collapse**:
-```
-Before:                   After:
-    🪨🪨🪨🪨🪨              🪨    🪨
-      🧊🧊🧊                  🧊
-        🧊                     🧊
-        🧊                      🧊
-    ·········             🧊🧊🧊🧊🧊
-
-Ice bridge holds     →  Too much weight!
-                        Bridge collapses
-```
-
-Bridge strength = `density × (1 + cooling_factor) × supports`
+- Bridge strength = `density × (1 + cooling_factor) × supports`
+- Will drive fluid flow (not yet implemented)
 
 ## Phase 5: Special Behaviors 🌱
 
-Material-specific logic.
+Material-specific logic:
 
-### Grass Growth 🌱
-
-```
-Grass spreads to nearby rock/ash:
-
-    🪨🪨🪨          🌱🪨🪨
-    🪨🌱🪨   →     🪨🌱🌱
-    🪨🪨🪨          🪨🪨🪨
-```
-
-- Low probability spread (looks organic)
-- Requires moderate temperature (-10°C to 200°C)
-- Too hot or cold: grass dies
-
-### Vapor Cooling ☁️
-
-- Vapor gradually cools toward room temperature
-- Simulates heat loss to environment
-
-## Movement Logic
-
-### Density-Based Displacement
-
-Denser materials push lighter ones aside:
-
-```
-Denser sinks, lighter rises:
-
-🌊 (density: 1000)      🪨 (density: 2700)
-🪨 (density: 2700)  →   🌊 (density: 1000)
-
-Rock pushes water up
-```
-
-**Density scale**:
-- 🪨 Rock: 2700 kg/m³
-- 🌋 Lava: 3100 kg/m³
-- 🌊 Water: 1000 kg/m³
-- 🧊 Ice: 917 kg/m³
-- 💨 Air: 1.2 kg/m³
-- ☁️ Vapor: 0.6 kg/m³
-
-### Temperature Affects Density
-
-Hot materials are less dense (thermal expansion):
-
-```
-ρ(T) = ρ₀ / (1 + α·ΔT)
-
-Example:
-🌊 Water at 20°C: 1000 kg/m³
-🌊 Water at 80°C: ~982 kg/m³  (rises!)
-```
-
-This creates **convection**:
-```
-    ☁️    ☁️           Hot rises
-    ↑     ↑
-    🌊🔥🌊
-    ↓     ↓           Cold sinks
-    🌊    🌊
-```
-
-### Viscosity
-
-Controls how easily materials flow (0-255 scale):
-
-```
-Low viscosity (water ≈15):    High viscosity (lava ≈135):
-
-    🌊               🌋
-   🌊🌊              🌋
-  🌊🌊🌊            🌋🌋
- 🌊🌊🌊🌊           🌋🌋
-🌊🌊🌊🌊🌊         🌋🌋🌋
-
-Spreads quickly      Spreads slowly
-```
-
-Movement probability = `1 - (viscosity / 255)`
-
-## Bottom-Up Iteration
-
-Movement processes cells from bottom to top:
-
-```
-❌ Top-down (bad):        ✅ Bottom-up (good):
-
-Frame N:                  Frame N:
-    🪨                        🪨
-    ·                         ·
-    ·                         ·
-
-Frame N+1:                Frame N+1:
-    ·                         ·
-    ·  ← moved once           🪨  ← moved once
-    🪨 ← moved twice!         ·
-
-Particle teleports!       Moves correctly
-```
-
-Prevents particles from moving multiple times per frame.
+- **Grass growth**: Spreads to nearby rock/ash with low probability, requires moderate temperature
+- **Vapor cooling**: Vapor gradually cools toward room temperature
 
 ## Key Files
 

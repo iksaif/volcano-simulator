@@ -1,49 +1,53 @@
-# Volcano Physics Simulator
+<div align="center">
+  <img src="public/logo.svg" alt="Volcano Simulator Logo" width="200" height="200"/>
 
-A 2D physics sandbox with thermal simulation and material interactions. Built with TypeScript and Canvas/WebGL rendering.
+  # 🌋 Volcano Physics Simulator
 
-![Volcano Physics Simulator](https://img.shields.io/badge/physics-simulation-orange) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+  A 2D physics sandbox with thermal simulation and material interactions. Built with TypeScript and Canvas/WebGL rendering.
 
-## Features
+  ![Volcano Physics Simulator](https://img.shields.io/badge/physics-simulation-orange) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+</div>
 
-- **Physics Engines**
+## ✨ Features
+
+- **⚙️ Physics Engines**
   - ✅ Cellular automaton engine (mostly working)
   - 🚧 Fluid dynamics engine (work in progress, not functional yet)
 
-- **Materials**
-  - 10+ materials: lava, water, rock, ice, vapor, air, grass, ash
+- **🧪 Materials**
+  - 10+ materials: 🌋 lava, 🌊 water, 🪨 rock, 🧊 ice, ☁️ vapor, 💨 air, 🌱 grass, 🌫️ ash
   - Physical properties: density, viscosity, thermal conductivity, heat capacity
   - Phase transitions: melting, boiling, freezing, condensation
   - Temperature-dependent behaviors
 
-- **Thermodynamics**
+- **🌡️ Thermodynamics**
   - Heat diffusion between cells
   - Temperature affects density and viscosity
   - Convection currents
   - Phase change effects
 
-- **Pressure**
+- **⚖️ Pressure**
   - Hydrostatic pressure (weight of materials above)
   - Structural collapse when pressure exceeds strength
   - Affects material behavior
 
-- **Controls**
+- **🎮 Controls**
   - Paint materials with adjustable brush size and temperature
   - Spawn pre-configured scenarios
   - Debug overlays for temperature, pressure, velocity
 
-- **Rendering**
+- **🎨 Rendering**
   - Canvas2D and WebGL modes
   - Temperature-based coloring
   - Velocity visualization
 
-## Getting Started
+## 🚀 Getting Started
 
-### Prerequisites
+### 📋 Prerequisites
 
 - Node.js 16+ and npm
 
-### Installation
+### 📦 Installation
 
 ```bash
 # Clone the repository
@@ -54,7 +58,7 @@ cd volcano
 npm install
 ```
 
-### Running the Simulator
+### ▶️ Running the Simulator
 
 ```bash
 # Development mode (hot reload)
@@ -69,7 +73,7 @@ npm run preview
 
 Open your browser to `http://localhost:5173` (or the port shown in terminal).
 
-## Architecture
+## 🏗️ Architecture
 
 The simulator is built with a modular architecture:
 
@@ -104,31 +108,31 @@ See [docs/cellular-engine.md](docs/cellular-engine.md) for details.
 
 SPH-based fluid simulation. **Work in progress, not functional yet.**
 
-## Controls
+## 🎮 Controls
 
-### Mouse Controls
+### 🖱️ Mouse Controls
 - **Left Click**: Place material / activate spawn
 - **Right Click**: Erase (place air)
 - **Scroll Wheel**: Adjust brush size
 
-### Keyboard Shortcuts
+### ⌨️ Keyboard Shortcuts
 - **1-9**: Select material type
 - **Space**: Pause/Resume simulation
 - **R**: Reset simulation
-- **T**: Toggle temperature overlay
-- **P**: Toggle pressure overlay
-- **V**: Toggle velocity overlay
-- **Tab**: Switch physics engine
+- **T**: Toggle temperature overlay 🌡️
+- **P**: Toggle pressure overlay ⚖️
+- **V**: Toggle velocity overlay 💨
+- **Tab**: Switch physics engine ⚙️
 - **+/-**: Adjust simulation speed
 - **F**: Toggle FPS display
 
-### UI Panels
+### 🎛️ UI Panels
 - **Material Selector**: Choose materials to place
 - **Spawn Mode**: Create predefined scenarios
 - **Settings**: Adjust simulation parameters
 - **Statistics**: View performance metrics
 
-## Development
+## 🛠️ Development
 
 ### Project Structure
 
@@ -137,20 +141,20 @@ SPH-based fluid simulation. **Work in progress, not functional yet.**
 - **Physics Passes**: Modular update phases (movement, thermal, pressure, transitions)
 - **Rendering**: Optimized pixel manipulation with temperature-based coloring
 
-### Adding New Materials
+### 🧪 Adding New Materials
 
 1. Add material type to `src/core/Types.ts`
 2. Register material in `src/materials/MaterialRegistry.ts`
 3. (Optional) Add custom behavior in `src/physics/engines/cellular/behaviors/`
 
-### Running Tests
+### 🧪 Running Tests
 
 ```bash
 # Run physics tests
 npm run test-physics
 ```
 
-### Building
+### 📦 Building
 
 ```bash
 # TypeScript compilation + Vite build
@@ -159,9 +163,9 @@ npm run build
 # Output goes to dist/
 ```
 
-## Technical Details
+## 🔧 Technical Details
 
-### Cell Data
+### 💾 Cell Data
 
 Each cell is a 32-bit integer with:
 - Material ID (4 bits)
@@ -169,7 +173,7 @@ Each cell is a 32-bit integer with:
 - Velocity (12 bits)
 - Flags (6 bits)
 
-### Material Properties
+### 📊 Material Properties
 
 Materials have physical properties:
 - Density (kg/m³)
@@ -178,31 +182,31 @@ Materials have physical properties:
 - Heat capacity
 - Phase transition temperatures
 
-### Performance
+### ⚡ Performance
 
 - Grid: 200×150 cells (default)
 - Target: 60 FPS
 - Typical: 50-60 FPS on modern hardware
 
-## Contributing
+## 🤝 Contributing
 
-Contributions welcome. Please submit issues and pull requests.
+Contributions welcome! Please submit issues and pull requests.
 
-## License
+## 📄 License
 
 MIT License - see LICENSE file for details
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
 Inspired by falling sand games and cellular automaton simulations.
 
-## Roadmap
+## 🗺️ Roadmap
 
-- [ ] Fix the lava injector
-- [ ] Complete fluid dynamics engine
-- [ ] Implement compression and explosions
-- [ ] Implement fire and combustion
-- [ ] Add particle effects
-- [ ] Mobile touch support
-- [ ] Save/load simulations
-- [ ] Material mixing and chemical reactions
+- [ ] 🌋 Fix the lava injector
+- [ ] 💧 Complete fluid dynamics engine
+- [ ] 💥 Implement compression and explosions
+- [ ] 🔥 Implement fire and combustion
+- [ ] ✨ Add particle effects
+- [ ] 📱 Mobile touch support
+- [ ] 💾 Save/load simulations
+- [ ] ⚗️ Material mixing and chemical reactions
