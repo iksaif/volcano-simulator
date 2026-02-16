@@ -23,8 +23,11 @@ export const Config = {
   LAVA_SOLIDIFY_TEMP: 800,
   WATER_BOIL_TEMP: 100,
 
+  // World
+  GROUND_DEPTH: 15, // Ground layer depth in cells from bottom
+
   // Interaction
-  DEFAULT_INJECTION_RATE: 0.5, // Reduced from 2 for slower injection
+  DEFAULT_INJECTION_RATE: 0.1,
   DEFAULT_BRUSH_SIZE: 2,
   MAX_BRUSH_SIZE: 10,
 

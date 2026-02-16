@@ -138,20 +138,11 @@ export function updateLiquid(
   if (tryMove(grid, x, y, x + dir, y + 1, material.viscosity)) return;
   if (tryMove(grid, x, y, x - dir, y + 1, material.viscosity)) return;
 
-  // Only flow sideways if we're resting on something (can't move down)
+  // Only flow sideways if we're resting on something (can't move down).
+  // tryMove's own viscosity check controls the flow rate — no extra gate needed.
   if (isRestingOnSomething(grid, x, y)) {
-    // Liquids spread horizontally with probability based on viscosity
-    const flowProbability = 1 - material.viscosity / 255;
-
-    // Smooth horizontal spread multiplier based on viscosity
-    // Low-viscosity (water: ~64) → ~0.68, high-viscosity (lava: ~170) → ~0.41
-    // Uses exponential decay: base + range * exp(-factor * normalized_viscosity)
-    const normalizedViscosity = material.viscosity / 255; // 0-1 range
-    const horizontalMultiplier = 0.2 + (0.8 * Math.exp(-2.0 * normalizedViscosity));
-
-    if (Math.random() < flowProbability * horizontalMultiplier) {
-      tryMove(grid, x, y, x + dir, y, material.viscosity);
-    }
+    if (tryMove(grid, x, y, x + dir, y, material.viscosity)) return;
+    tryMove(grid, x, y, x - dir, y, material.viscosity);
   }
 }
 

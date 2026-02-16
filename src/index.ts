@@ -317,15 +317,17 @@ function init() {
     });
   }
 
-  // Update shaft status display
+  // Update shaft status display and sync slider
   function updateShaftStatus(): void {
     const positionEl = document.getElementById('shaft-position');
     const widthEl = document.getElementById('shaft-width');
     const rateEl = document.getElementById('shaft-rate');
+    const rateSlider = document.getElementById('injection-rate') as HTMLInputElement | null;
 
     if (positionEl) positionEl.textContent = inputManager.lavaInjector.getShaftPosition().toString();
     if (widthEl) widthEl.textContent = inputManager.lavaInjector.getShaftWidth().toString();
     if (rateEl) rateEl.textContent = inputManager.lavaInjector.getRate().toFixed(1);
+    if (rateSlider) rateSlider.value = inputManager.lavaInjector.getRate().toString();
   }
 
   // Initial update

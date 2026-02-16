@@ -1,4 +1,6 @@
 // Vertical shaft injection system for volcano simulation
+// Uses a "conveyor belt" approach: shifts material upward through the shaft
+// and injects new material at the bottom each frame.
 
 import { Grid } from '../core/Grid';
 import { Cell } from '../core/Cell';
@@ -11,6 +13,8 @@ export class LavaInjector {
   private shaftPosition: number; // X position of shaft center
   private shaftWidth: number = 1; // Width of shaft in cells
   private grid: Grid | null = null;
+  private accumulator: number = 0;
+  private enabled: boolean = true;
 
   constructor() {
     this.shaftPosition = 0; // Will be set to center in setGrid
@@ -25,22 +29,65 @@ export class LavaInjector {
   }
 
   /**
-   * Update injection (inject material mix from bottom of shaft with upward velocity)
+   * Update injection: push material upward through the shaft (conveyor belt)
+   * and inject fresh material at the bottom.
    */
   update(grid: Grid): void {
-    if (this.rate === 0) return;
-
-    const cellsToInject = Math.ceil(this.rate);
+    if (!this.enabled || this.rate === 0) return;
 
     // Calculate shaft boundaries
     const halfWidth = Math.floor(this.shaftWidth / 2);
     const startX = Math.max(0, this.shaftPosition - halfWidth);
     const endX = Math.min(grid.width - 1, this.shaftPosition + halfWidth);
 
-    // Inject material from the bottom line with strong upward velocity
+    const shaftTop = grid.height - Config.GROUND_DEPTH;
+    const shaftBottom = grid.height - 1;
+
+    // Keep the shaft hot every frame — it's fed by magma from below.
+    // This prevents lava from solidifying inside the shaft before reaching the surface.
+    for (let x = startX; x <= endX; x++) {
+      for (let y = shaftTop; y <= shaftBottom; y++) {
+        const cell = grid.get(x, y);
+        if (Cell.getTemperature(cell) < this.temperature) {
+          grid.set(x, y, Cell.setTemperature(cell, this.temperature));
+        }
+      }
+    }
+
+    // Rate-controlled injection
+    this.accumulator += this.rate;
+    const cellsToInject = Math.floor(this.accumulator);
+    if (cellsToInject === 0) return;
+    this.accumulator -= cellsToInject;
+
     for (let x = startX; x <= endX; x++) {
       for (let i = 0; i < cellsToInject; i++) {
-        this.injectMaterialMix(grid, x, grid.height - 1);
+        // Find the highest empty/air cell we can push material into.
+        // Scan upward from just above the shaft, limited to a few cells
+        // above the surface so lava must flow naturally beyond that.
+        // Push any material regardless of type — volcanic pressure pushes everything.
+        let emptyY = -1;
+        // Wider shaft = more pressure = pushes higher above the surface
+        const maxPushAboveSurface = Math.max(8, this.shaftWidth * 5);
+        const minY = Math.max(0, shaftTop - maxPushAboveSurface);
+        for (let y = shaftTop - 1; y >= minY; y--) {
+          const cell = grid.get(x, y);
+          const matId = Cell.getMaterialId(cell);
+          if (matId === MaterialType.Empty || matId === MaterialType.Air) {
+            emptyY = y;
+            break;
+          }
+        }
+
+        if (emptyY === -1) continue; // No room, shaft is blocked
+
+        // Shift everything from emptyY down to shaftBottom-1 up by one row
+        for (let y = emptyY; y < shaftBottom; y++) {
+          grid.set(x, y, grid.get(x, y + 1));
+        }
+
+        // Inject new material at the bottom of the shaft
+        this.injectMaterialMix(grid, x, shaftBottom);
       }
     }
   }
@@ -50,7 +97,6 @@ export class LavaInjector {
    * 94% lava, 2% water, 2% ash, 2% gas
    */
   private injectMaterialMix(grid: Grid, x: number, y: number): void {
-    // Determine material type based on mixture percentages
     const rand = Math.random() * 100;
     let materialType: MaterialType;
 
@@ -64,24 +110,7 @@ export class LavaInjector {
       materialType = MaterialType.Gas;
     }
 
-    // Create cell with strong upward velocity
-    const cell = grid.get(x, y);
-    const existingMaterial = Cell.getMaterialId(cell);
-
-    // Only inject if cell is empty or already part of the mix
-    if (
-      existingMaterial === MaterialType.Empty ||
-      existingMaterial === MaterialType.Air ||
-      existingMaterial === MaterialType.Lava ||
-      existingMaterial === MaterialType.Water ||
-      existingMaterial === MaterialType.Ash ||
-      existingMaterial === MaterialType.Gas
-    ) {
-      const upwardVelocity = -50; // Strong upward velocity (negative Y)
-      const newCell = Cell.create(materialType, this.temperature, 10);
-      const cellWithVelocity = Cell.setVelocity(newCell, 0, upwardVelocity);
-      grid.set(x, y, cellWithVelocity);
-    }
+    grid.set(x, y, Cell.create(materialType, this.temperature, 0));
   }
 
   /**
@@ -172,5 +201,13 @@ export class LavaInjector {
    */
   getShaftWidth(): number {
     return this.shaftWidth;
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
   }
 }

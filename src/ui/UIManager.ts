@@ -15,11 +15,31 @@ export class UIManager {
    * Setup all UI controls
    */
   private setupControls(): void {
+    // Eruption toggle
+    const eruptionToggle = document.getElementById('eruption-toggle');
+    if (eruptionToggle) {
+      eruptionToggle.addEventListener('click', () => {
+        const injector = this.inputManager.lavaInjector;
+        injector.setEnabled(!injector.isEnabled());
+        if (injector.isEnabled()) {
+          eruptionToggle.textContent = 'ERUPTING';
+          eruptionToggle.style.color = '#ff6b35';
+          eruptionToggle.style.borderColor = '#ff6b35';
+          eruptionToggle.style.background = '#2a1a0a';
+        } else {
+          eruptionToggle.textContent = 'DORMANT';
+          eruptionToggle.style.color = '#666';
+          eruptionToggle.style.borderColor = '#666';
+          eruptionToggle.style.background = '#1a1a1a';
+        }
+      });
+    }
+
     // Injection rate slider
     const injectionRateSlider = document.getElementById(
       'injection-rate'
     ) as HTMLInputElement;
-    const injectionRateValue = document.getElementById('rate-value');
+    const injectionRateValue = document.getElementById('shaft-rate');
 
     if (injectionRateSlider && injectionRateValue) {
       injectionRateSlider.addEventListener('input', () => {
