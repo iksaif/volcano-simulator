@@ -3,6 +3,7 @@
 import type { IPhysicsEngine } from './IPhysicsEngine';
 import { CellularPhysicsEngine } from './engines/cellular/CellularPhysicsEngine';
 import { FluidDynamicsPhysicsEngine } from './engines/fluiddynamics/FluidDynamicsPhysicsEngine';
+import { EruptivePhysicsEngine } from './engines/eruptive/EruptivePhysicsEngine';
 
 /**
  * Manages registration and retrieval of physics engine implementations
@@ -22,6 +23,9 @@ export class PhysicsEngineRegistry {
 
     // Register the fluid dynamics engine
     this.register('fluiddynamics', () => new FluidDynamicsPhysicsEngine());
+
+    // Register the eruptive engine
+    this.register('eruptive', () => new EruptivePhysicsEngine());
 
     this.initialized = true;
   }

@@ -6,48 +6,91 @@ import { MaterialState } from '../../../../core/Types';
 import { MaterialRegistry } from '../../../../materials/MaterialRegistry';
 import { tryMove, isRestingOnSomething, randomDirection } from './PhysicsUtils';
 
+// Maximum overhang distance (cells from nearest vertical support)
+const MAX_OVERHANG = 3;
+
 /**
  * Check if a solid particle has structural support (for bridging behavior)
- * Returns object with hasSupport boolean and supportCount number
+ * Returns object with hasSupport boolean, supportCount, and whether
+ * the cell has direct support below (vs only diagonal).
  */
-function checkStructuralSupport(grid: Grid, x: number, y: number): { hasSupport: boolean; supportCount: number } {
-  // Check for support from below and diagonal neighbors
+function isSolidAt(grid: Grid, x: number, y: number): boolean {
+  if (!grid.inBounds(x, y)) return false;
+  const cell = grid.get(x, y);
+  if (Cell.isEmpty(cell)) return false;
+  return MaterialRegistry.get(Cell.getMaterialId(cell)).state === MaterialState.Solid;
+}
+
+/**
+ * Check if a solid particle has structural support (for bridging behavior).
+ * Support comes from: below, diagonal-below, or lateral bridging (both sides).
+ */
+function checkStructuralSupport(grid: Grid, x: number, y: number): {
+  hasSupport: boolean;
+  supportCount: number;
+  hasDirectBelow: boolean;
+} {
   let supportCount = 0;
+  let hasDirectBelow = false;
 
   // Check directly below
-  if (grid.inBounds(x, y + 1)) {
-    const cellBelow = grid.get(x, y + 1);
-    if (!Cell.isEmpty(cellBelow)) {
-      const materialBelow = MaterialRegistry.get(Cell.getMaterialId(cellBelow));
-      if (materialBelow.state === MaterialState.Solid) {
-        supportCount++;
-      }
-    }
+  if (isSolidAt(grid, x, y + 1)) {
+    supportCount++;
+    hasDirectBelow = true;
   }
 
   // Check diagonal supports (both sides)
-  const diagonalPositions = [
-    { x: x - 1, y: y + 1 }, // bottom-left
-    { x: x + 1, y: y + 1 }, // bottom-right
-  ];
+  if (isSolidAt(grid, x - 1, y + 1)) supportCount++;
+  if (isSolidAt(grid, x + 1, y + 1)) supportCount++;
 
-  for (const pos of diagonalPositions) {
-    if (grid.inBounds(pos.x, pos.y)) {
-      const cell = grid.get(pos.x, pos.y);
-      if (!Cell.isEmpty(cell)) {
-        const material = MaterialRegistry.get(Cell.getMaterialId(cell));
-        if (material.state === MaterialState.Solid) {
-          supportCount++;
+  // Lateral bridging: solid on BOTH left and right = horizontal bridge/cap
+  // (like a keystone held between walls)
+  if (isSolidAt(grid, x - 1, y) && isSolidAt(grid, x + 1, y)) {
+    supportCount += 2;
+  }
+
+  return {
+    hasSupport: supportCount >= 2,
+    supportCount,
+    hasDirectBelow,
+  };
+}
+
+/**
+ * Check how far a cell is from the nearest vertically-supported column.
+ * Scans left and right along the same row to find a solid cell that has
+ * solid directly below it. Returns the minimum horizontal distance.
+ */
+function getOverhangDistance(grid: Grid, x: number, y: number): number {
+  // If this cell itself has solid below, overhang = 0
+  if (grid.inBounds(x, y + 1)) {
+    const below = grid.get(x, y + 1);
+    if (!Cell.isEmpty(below) && MaterialRegistry.get(Cell.getMaterialId(below)).state === MaterialState.Solid) {
+      return 0;
+    }
+  }
+
+  // Scan left and right for the nearest vertically-supported solid
+  for (let dist = 1; dist <= MAX_OVERHANG + 1; dist++) {
+    for (const dir of [-1, 1]) {
+      const nx = x + dir * dist;
+      if (!grid.inBounds(nx, y)) continue;
+      const neighbor = grid.get(nx, y);
+      if (Cell.isEmpty(neighbor)) continue;
+      if (MaterialRegistry.get(Cell.getMaterialId(neighbor)).state !== MaterialState.Solid) continue;
+
+      // Found a solid neighbor — does it have solid below?
+      if (grid.inBounds(nx, y + 1)) {
+        const neighborBelow = grid.get(nx, y + 1);
+        if (!Cell.isEmpty(neighborBelow) &&
+            MaterialRegistry.get(Cell.getMaterialId(neighborBelow)).state === MaterialState.Solid) {
+          return dist;
         }
       }
     }
   }
 
-  // Solid is stable if it has 2 or more support points
-  return {
-    hasSupport: supportCount >= 2,
-    supportCount: supportCount
-  };
+  return MAX_OVERHANG + 1; // No support found within range
 }
 
 /**
@@ -99,15 +142,24 @@ export function updateSolid(
   // Bridge collapses if pressure exceeds structural capacity
   const bridgeCollapsed = pressure > structuralCapacity * strengthMultiplier;
 
-  // If cold, structurally supported, and pressure is manageable, stay bridged
-  if (coolingFactor > 1 && supportInfo.hasSupport && !bridgeCollapsed) {
+  // Rock sitting directly on solid ground is always stable
+  if (supportInfo.hasDirectBelow) {
+    return;
+  }
+
+  // Check overhang distance from nearest vertically-supported column
+  const overhang = getOverhangDistance(grid, x, y);
+  const overhangOk = overhang <= MAX_OVERHANG;
+
+  // If cold, structurally supported, overhang within limit, and pressure manageable: stay
+  if (coolingFactor > 1 && supportInfo.hasSupport && !bridgeCollapsed && overhangOk) {
     return; // Stay in place (bridged)
   }
 
-  // Normal falling behavior (with temperature-dependent viscosity)
+  // Normal falling behavior
+  // First try falling into empty cells via tryMove
   const effectiveViscosity = material.viscosity * (1 + coolingFactor);
 
-  // Solids fall straight down - ignore viscosity for guaranteed falling
   if (tryMove(grid, x, y, x, y + 1, effectiveViscosity, true)) return;
 
   // Try diagonal down if blocked
@@ -115,7 +167,19 @@ export function updateSolid(
   if (tryMove(grid, x, y, x + dir, y + 1, effectiveViscosity, true)) return;
   if (tryMove(grid, x, y, x - dir, y + 1, effectiveViscosity, true)) return;
 
-  // Solid particles don't flow sideways - they just pile up and rest
+  // If tryMove failed (air below, not empty), swap directly with gas below
+  // This lets unsupported rocks fall through air
+  if (grid.inBounds(x, y + 1)) {
+    const below = grid.get(x, y + 1);
+    if (!Cell.isEmpty(below)) {
+      const belowMat = MaterialRegistry.get(Cell.getMaterialId(below));
+      if (belowMat.state === MaterialState.Gas) {
+        grid.set(x, y + 1, Cell.setVelocity(cell, 0, 1));
+        grid.set(x, y, Cell.setVelocity(below, 0, -1));
+        return;
+      }
+    }
+  }
 }
 
 /**

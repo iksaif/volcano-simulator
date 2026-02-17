@@ -67,7 +67,8 @@ export function tryMove(
     return false;
   }
 
-  // Solids can displace fluids and gases (when falling)
+  // Solids cannot displace other materials through tryMove
+  // (solid falling through air is handled directly in updateSolid)
   if (currentMaterial.state === MaterialState.Solid) {
     return false;
   }

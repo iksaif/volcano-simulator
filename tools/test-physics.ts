@@ -29,6 +29,9 @@ if (testName === 'help') {
   console.log('  pass-by-pass     Test each physics pass individually');
   console.log('  basic            Test basic physics (rock/water/gas)');
   console.log('  velocity         Test velocity tracking in cellular engine');
+  console.log('  eruption         Test eruptive fracture and ejection');
+  console.log('  gas-buoyancy     Test gas rising through liquid');
+  console.log('  pressure-buildup Test sealed chamber pressure accumulation');
   console.log('');
   console.log('Options:');
   console.log('  --engine=<name>  Physics engine to use (default: fluiddynamics)');
@@ -51,6 +54,12 @@ if (testName === 'air-stability') {
   testBasicPhysics();
 } else if (testName === 'velocity') {
   testVelocity();
+} else if (testName === 'eruption') {
+  testEruption();
+} else if (testName === 'gas-buoyancy') {
+  testGasBuoyancy();
+} else if (testName === 'pressure-buildup') {
+  testPressureBuildup();
 } else {
   console.error(`Unknown test: ${testName}`);
   console.log('Run with "help" to see available tests');
@@ -428,6 +437,230 @@ function testVelocity() {
   printGrid(grid);
 }
 
+function testEruption() {
+  console.log('🧪 ERUPTION TEST');
+  console.log('='.repeat(60));
+  console.log(`Grid: 16x16, Frames: ${frames}, Engine: ${engineId}\n`);
+
+  const engine = PhysicsEngineRegistry.create(engineId);
+  const grid = new Grid(16, 16);
+
+  // Fill with air
+  for (let y = 0; y < 16; y++) {
+    for (let x = 0; x < 16; x++) {
+      grid.set(x, y, new Cell(MaterialType.Air, 20, 0));
+    }
+  }
+
+  // Create sealed lava chamber: rock cap at y=6-7, lava below at y=8-13
+  // Rock walls on sides (x=4 and x=11)
+  for (let y = 6; y <= 13; y++) {
+    grid.set(4, y, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+    grid.set(11, y, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+  }
+  // Rock cap across top
+  for (let x = 4; x <= 11; x++) {
+    grid.set(x, 6, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+    grid.set(x, 7, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+  }
+  // Rock floor
+  for (let x = 4; x <= 11; x++) {
+    grid.set(x, 14, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+  }
+  // Fill chamber with hot lava
+  for (let y = 8; y <= 13; y++) {
+    for (let x = 5; x <= 10; x++) {
+      grid.set(x, y, new Cell(MaterialType.Lava, 1200, 0, 0, 0, 0, 1, -1, false));
+    }
+  }
+
+  console.log('Initial (sealed lava chamber under rock cap):');
+  printGrid(grid);
+
+  const initialRockCount = countMaterial(grid, MaterialType.Rock);
+  let fractured = false;
+  let materialAboveCap = false;
+
+  const dt = 50;
+  for (let frame = 0; frame < frames; frame++) {
+    engine.update(grid, dt);
+
+    // Check pressure stats
+    let maxPressure = 0;
+    let totalPressure = 0;
+    let pressureCells = 0;
+    for (let y = 8; y <= 13; y++) {
+      for (let x = 5; x <= 10; x++) {
+        const cell = grid.get(x, y);
+        const p = Cell.getPressure(cell);
+        if (p > maxPressure) maxPressure = p;
+        totalPressure += p;
+        pressureCells++;
+      }
+    }
+
+    // Check if material escaped the chamber (above cap y<6, or outside walls x<4 or x>11)
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const cell = grid.get(x, y);
+        const matId = Cell.getMaterialId(cell);
+        if (matId === MaterialType.Lava || matId === MaterialType.Ash) {
+          // Above cap or outside chamber walls
+          if (y < 6 || x < 4 || x > 11) {
+            materialAboveCap = true;
+          }
+        }
+      }
+    }
+
+    const currentRock = countMaterial(grid, MaterialType.Rock);
+    if (currentRock < initialRockCount && !fractured) {
+      fractured = true;
+      console.log(`\n💥 FRACTURE at frame ${frame}! Rock: ${initialRockCount} -> ${currentRock}`);
+    }
+
+    if (frame % 20 === 0 || frame === frames - 1) {
+      console.log(`Frame ${frame.toString().padStart(3)}: maxP=${maxPressure.toFixed(0)}, avgP=${(totalPressure / pressureCells).toFixed(0)}, rocks=${currentRock}`);
+    }
+
+    if (frame % 50 === 0 && frame > 0) {
+      printGrid(grid);
+    }
+  }
+
+  console.log('\nFinal grid:');
+  printGrid(grid);
+
+  if (fractured) {
+    console.log('✅ Rock cap fractured under pressure');
+  } else {
+    console.log('❌ Rock cap did not fracture');
+  }
+
+  if (materialAboveCap) {
+    console.log('✅ Material escaped the chamber');
+  } else {
+    console.log('❌ No material escaped the chamber');
+  }
+}
+
+function testGasBuoyancy() {
+  console.log('🧪 GAS BUOYANCY TEST');
+  console.log('='.repeat(60));
+  console.log(`Grid: 16x16, Frames: ${frames}, Engine: ${engineId}\n`);
+
+  const engine = PhysicsEngineRegistry.create(engineId);
+  const grid = new Grid(16, 16);
+
+  // Fill with water
+  for (let y = 0; y < 16; y++) {
+    for (let x = 0; x < 16; x++) {
+      grid.set(x, y, new Cell(MaterialType.Water, 20, 0, 0, 0, 0, 1, -1, false));
+    }
+  }
+
+  // Place gas bubble at bottom
+  grid.set(8, 14, new Cell(MaterialType.Gas, 20, 0, 0, 0, 0, 1, -1, false));
+
+  console.log('Initial (gas at y=14 in water column):');
+  printGrid(grid);
+
+  const dt = 50;
+  for (let frame = 0; frame < frames; frame++) {
+    engine.update(grid, dt);
+
+    if (frame % 10 === 0 || frame === frames - 1) {
+      const gasY = findMaterial(grid, MaterialType.Gas);
+      console.log(`Frame ${frame.toString().padStart(3)}: gas at y=${gasY}`);
+    }
+  }
+
+  console.log('\nFinal grid:');
+  printGrid(grid);
+
+  const finalGasY = findMaterial(grid, MaterialType.Gas);
+  if (finalGasY !== null && finalGasY < 10) {
+    console.log(`✅ Gas rose from y=14 to y=${finalGasY}`);
+  } else {
+    console.log(`❌ Gas did not rise enough (at y=${finalGasY})`);
+  }
+}
+
+function testPressureBuildup() {
+  console.log('🧪 PRESSURE BUILDUP TEST');
+  console.log('='.repeat(60));
+  console.log(`Grid: 16x16, Frames: ${frames}, Engine: ${engineId}\n`);
+
+  const engine = PhysicsEngineRegistry.create(engineId);
+  const grid = new Grid(16, 16);
+
+  // Fill with air
+  for (let y = 0; y < 16; y++) {
+    for (let x = 0; x < 16; x++) {
+      grid.set(x, y, new Cell(MaterialType.Air, 20, 0));
+    }
+  }
+
+  // Create sealed chamber: rock box with lava inside
+  // Rock walls
+  for (let y = 5; y <= 12; y++) {
+    grid.set(5, y, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+    grid.set(10, y, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+  }
+  // Rock top and bottom
+  for (let x = 5; x <= 10; x++) {
+    grid.set(x, 5, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+    grid.set(x, 12, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+  }
+  // Lava inside
+  for (let y = 6; y <= 11; y++) {
+    for (let x = 6; x <= 9; x++) {
+      grid.set(x, y, new Cell(MaterialType.Lava, 1200, 0, 0, 0, 0, 1, -1, false));
+    }
+  }
+
+  console.log('Initial (sealed lava chamber):');
+  printGrid(grid);
+
+  const pressureHistory: number[] = [];
+  const dt = 50;
+
+  for (let frame = 0; frame < frames; frame++) {
+    engine.update(grid, dt);
+
+    // Measure max pressure inside chamber
+    let maxPressure = 0;
+    for (let y = 6; y <= 11; y++) {
+      for (let x = 6; x <= 9; x++) {
+        const p = Cell.getPressure(grid.get(x, y));
+        if (p > maxPressure) maxPressure = p;
+      }
+    }
+    pressureHistory.push(maxPressure);
+
+    if (frame % 10 === 0 || frame === frames - 1) {
+      console.log(`Frame ${frame.toString().padStart(3)}: maxPressure=${maxPressure.toFixed(0)}`);
+    }
+  }
+
+  // Check monotonic increase in first 20 frames
+  let monotonic = true;
+  const checkFrames = Math.min(20, pressureHistory.length - 1);
+  for (let i = 0; i < checkFrames; i++) {
+    if (pressureHistory[i + 1] < pressureHistory[i]) {
+      monotonic = false;
+      console.log(`  Non-monotonic at frame ${i}: ${pressureHistory[i].toFixed(0)} -> ${pressureHistory[i + 1].toFixed(0)}`);
+      break;
+    }
+  }
+
+  if (monotonic && pressureHistory[checkFrames] > 0) {
+    console.log(`✅ Pressure increased monotonically in first ${checkFrames} frames (0 -> ${pressureHistory[checkFrames].toFixed(0)})`);
+  } else {
+    console.log('❌ Pressure did not increase monotonically');
+  }
+}
+
 // Helper functions
 function countMaterial(grid: Grid, materialId: MaterialType): number {
   let count = 0;
@@ -474,6 +707,10 @@ function printGrid(grid: Grid): void {
     [MaterialType.Water]: '~',
     [MaterialType.Gas]: '°',
     [MaterialType.Air]: ' ',
+    [MaterialType.Vapor]: '▒',
+    [MaterialType.Ice]: '❄',
+    [MaterialType.Grass]: '♣',
+    [MaterialType.Ash]: '▓',
   };
 
   const maxRows = Math.min(20, grid.height);

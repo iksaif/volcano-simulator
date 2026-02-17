@@ -113,8 +113,10 @@ export class StateTransitions implements IPhysicsEnginePass {
   }
 
   /**
-   * Expand material by creating additional cells in nearby empty spaces
-   * Uses random scatter pattern to distribute expansion cells
+   * Expand material by creating additional cells in nearby spaces.
+   * Expansion cells get outward velocity proportional to the expansion count,
+   * creating an explosive effect for phase transitions (e.g. water → steam).
+   * Can displace gas/air cells to make room.
    */
   private expandMaterial(
     grid: Grid,
@@ -127,6 +129,9 @@ export class StateTransitions implements IPhysicsEnginePass {
     let created = 0;
     const maxAttempts = count * 10; // Prevent infinite loops
     let attempts = 0;
+
+    // Explosive speed scales with how many cells we need to create
+    const expansionSpeed = Math.min(count * 0.8, 4.0);
 
     // Try to place expansion cells in random nearby locations
     while (created < count && attempts < maxAttempts) {
@@ -143,14 +148,34 @@ export class StateTransitions implements IPhysicsEnginePass {
       const targetX = centerX + dx;
       const targetY = centerY + dy;
 
-      // Check bounds and empty
-      if (grid.inBounds(targetX, targetY)) {
-        const targetCell = grid.get(targetX, targetY);
+      if (!grid.inBounds(targetX, targetY)) {
+        attempts++;
+        continue;
+      }
 
-        if (Cell.isEmpty(targetCell)) {
-          // Create expansion cell
+      const targetCell = grid.get(targetX, targetY);
+
+      // Calculate outward velocity for this expansion cell
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const vx = (dx / dist) * expansionSpeed;
+      const vy = (dy / dist) * expansionSpeed;
+
+      if (Cell.isEmpty(targetCell)) {
+        // Place into empty space with outward velocity
+        const expandedCell = Cell.create(materialId, temperature, 0);
+        grid.set(targetX, targetY, Cell.setVelocity(expandedCell, vx, vy));
+        created++;
+      } else {
+        // Try to displace gas/air cells — expansion pushes them away
+        const targetMat = MaterialRegistry.get(Cell.getMaterialId(targetCell));
+        if (targetMat.state === MaterialState.Gas) {
+          // Push the displaced gas outward
+          const displaced = Cell.setVelocity(targetCell, vx * 1.5, vy * 1.5);
+          // Find a spot for the displaced cell
+          this.displaceCell(grid, targetX, targetY, displaced, dx, dy);
+          // Place expansion cell
           const expandedCell = Cell.create(materialId, temperature, 0);
-          grid.set(targetX, targetY, expandedCell);
+          grid.set(targetX, targetY, Cell.setVelocity(expandedCell, vx, vy));
           created++;
         }
       }
@@ -158,8 +183,65 @@ export class StateTransitions implements IPhysicsEnginePass {
       attempts++;
     }
 
-    // Note: If we can't place all expansion cells due to lack of space,
-    // we just create as many as possible (realistic constraint)
+    // Also push nearby non-solid cells outward (blast wave from rapid expansion)
+    if (expansionSpeed > 1.0) {
+      const blastRadius = Math.min(count + 1, 4);
+      for (let bdy = -blastRadius; bdy <= blastRadius; bdy++) {
+        for (let bdx = -blastRadius; bdx <= blastRadius; bdx++) {
+          if (bdx === 0 && bdy === 0) continue;
+          const bx = centerX + bdx;
+          const by = centerY + bdy;
+          if (!grid.inBounds(bx, by)) continue;
+
+          const bCell = grid.get(bx, by);
+          if (Cell.isEmpty(bCell)) continue;
+          if (Cell.getMaterialId(bCell) === materialId) continue; // skip our own expansion cells
+
+          const bMat = MaterialRegistry.get(Cell.getMaterialId(bCell));
+          if (bMat.state === MaterialState.Solid) continue;
+
+          const bDist = Math.sqrt(bdx * bdx + bdy * bdy);
+          if (bDist > blastRadius) continue;
+
+          const falloff = 1 - bDist / (blastRadius + 1);
+          const pushSpeed = expansionSpeed * falloff * 0.7;
+          const pushVx = (bdx / bDist) * pushSpeed;
+          const pushVy = (bdy / bDist) * pushSpeed;
+
+          const existVx = Cell.getVelocityX(bCell);
+          const existVy = Cell.getVelocityY(bCell);
+          grid.set(bx, by, Cell.setVelocity(bCell, existVx + pushVx, existVy + pushVy));
+        }
+      }
+    }
+  }
+
+  /**
+   * Try to move a displaced cell further outward in the same direction.
+   */
+  private displaceCell(
+    grid: Grid,
+    fromX: number,
+    fromY: number,
+    cell: Cell,
+    dirX: number,
+    dirY: number
+  ): void {
+    // Normalize direction to single step
+    const stepX = dirX === 0 ? 0 : (dirX > 0 ? 1 : -1);
+    const stepY = dirY === 0 ? 0 : (dirY > 0 ? 1 : -1);
+
+    // Try to place 1-3 cells further out
+    for (let step = 1; step <= 3; step++) {
+      const nx = fromX + stepX * step;
+      const ny = fromY + stepY * step;
+      if (!grid.inBounds(nx, ny)) continue;
+      if (Cell.isEmpty(grid.get(nx, ny))) {
+        grid.set(nx, ny, cell);
+        return;
+      }
+    }
+    // If no space found, the displaced cell is lost (pressure crushes it)
   }
 
   /**
