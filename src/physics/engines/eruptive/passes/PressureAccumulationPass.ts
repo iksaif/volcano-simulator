@@ -108,7 +108,8 @@ export class PressureAccumulationPass implements IPhysicsEnginePass {
 
       const matId = Cell.getMaterialId(above);
       const mat = MaterialRegistry.get(matId);
-      if (mat.state === MaterialState.Solid) return true; // solid cap = sealed
+      // Loose ash doesn't seal a vent, so it can't re-plug an erupting conduit
+      if (mat.state === MaterialState.Solid && matId !== MaterialType.Ash) return true; // solid cap = sealed
 
       // Air, fluid, gas — keep looking upward (could be trapped inside chamber)
     }

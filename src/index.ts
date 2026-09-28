@@ -143,6 +143,7 @@ function init() {
         break;
       default:
         scenario = 'flat';
+        uiManager.setEruptionEnabled(true);
         WorldGenerator.initializeWorld(
           grid,
           Config.GROUND_DEPTH,
@@ -150,6 +151,8 @@ function init() {
           inputManager.lavaInjector.getShaftWidth()
         );
     }
+    // Presets have their own magma chambers; the flat-ground injector would flood them
+    if (scenario !== 'flat') uiManager.setEruptionEnabled(false);
     console.log(`🗺️  Loaded scenario: ${scenario}`);
   }
 
@@ -158,7 +161,7 @@ function init() {
 
   // Create input manager and UI (start with pixel canvas)
   const inputManager = new InputManager(pixelCanvas, grid);
-  new UIManager(inputManager); // UIManager sets up event listeners and manages UI state
+  const uiManager = new UIManager(inputManager); // Sets up event listeners and manages UI state
 
   loadScenario('flat');
 

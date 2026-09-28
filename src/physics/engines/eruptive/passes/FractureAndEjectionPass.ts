@@ -7,6 +7,11 @@ import { MaterialType, MaterialState } from '../../../../core/Types';
 import { MaterialRegistry } from '../../../../materials/MaterialRegistry';
 import type { IPhysicsEnginePass } from '../../../IPhysicsEngine';
 
+// Fracture threshold: base rock strength plus confinement from the rock above
+const BASE_STRENGTH = 2000;
+const STRENGTH_PER_OVERBURDEN_CELL = 150;
+const MAX_OVERBURDEN = 40;
+
 export class FractureAndEjectionPass implements IPhysicsEnginePass {
   execute(grid: Grid, _deltaTime: number): void {
     const width = grid.width;
@@ -54,12 +59,12 @@ export class FractureAndEjectionPass implements IPhysicsEnginePass {
         }
 
         // Calculate fracture threshold
-        // Surface rock is weaker (low depth), deep rock is stronger
+        // Rock under a thin roof is weaker, rock under a thick roof is confined and stronger
         // Hot rock is weakest (heated by adjacent lava)
-        const depth = y; // distance from top
+        const overburden = this.countOverburden(grid, x, y);
         const temp = Cell.getTemperature(cell);
         const hotPenalty = temp > 400 ? (temp - 400) * 3 : 0;
-        const threshold = 2000 + depth * 200 - hotPenalty;
+        const threshold = BASE_STRENGTH + overburden * STRENGTH_PER_OVERBURDEN_CELL - hotPenalty;
 
         if (maxPressure <= threshold) continue;
 
@@ -89,14 +94,7 @@ export class FractureAndEjectionPass implements IPhysicsEnginePass {
       if (Cell.isEmpty(cell)) continue;
 
       const temp = Cell.getTemperature(cell);
-
-      // Convert: hot rock -> lava, cold rock -> ash (granular debris)
-      let newMaterialId: number;
-      if (temp > 800) {
-        newMaterialId = MaterialType.Lava;
-      } else {
-        newMaterialId = MaterialType.Ash;
-      }
+      const source = grid.get(frac.pressureSource.x, frac.pressureSource.y);
 
       // Calculate ejection velocity: away from pressure source
       const dx = frac.x - frac.pressureSource.x;
@@ -106,20 +104,30 @@ export class FractureAndEjectionPass implements IPhysicsEnginePass {
       const vx = (dx / dist) * speed;
       const vy = (dy / dist) * speed;
 
-      // Create fractured cell with velocity
-      const newCell = Cell.create(newMaterialId, temp, Cell.getPressure(cell) * 0.3);
-      const withVelocity = Cell.setVelocity(newCell, vx, vy);
-      grid.set(frac.x, frac.y, withVelocity);
+      if (!Cell.isEmpty(source) && Cell.getMaterialId(source) === MaterialType.Lava) {
+        // Magma intrudes into the crack (dike propagation) and the shattered
+        // rock takes its place as hot ash. Swapping conserves mass, so the
+        // chamber drains upward instead of melting the whole mountain.
+        const magma = Cell.setPressure(source, Cell.getPressure(source) * 0.5);
+        grid.set(frac.x, frac.y, Cell.setVelocity(magma, vx, vy));
+        const rubble = Cell.create(MaterialType.Ash, Cell.getTemperature(source), 0);
+        grid.set(frac.pressureSource.x, frac.pressureSource.y, rubble);
+      } else {
+        // Convert: hot rock -> lava, cold rock -> ash (granular debris)
+        const newMaterialId = temp > 800 ? MaterialType.Lava : MaterialType.Ash;
 
-      // Release 50% of source cell's pressure
-      const source = grid.get(frac.pressureSource.x, frac.pressureSource.y);
-      if (!Cell.isEmpty(source)) {
-        const srcPressure = Cell.getPressure(source);
-        grid.set(
-          frac.pressureSource.x,
-          frac.pressureSource.y,
-          Cell.setPressure(source, srcPressure * 0.5)
-        );
+        // Create fractured cell with velocity
+        const newCell = Cell.create(newMaterialId, temp, Cell.getPressure(cell) * 0.3);
+        grid.set(frac.x, frac.y, Cell.setVelocity(newCell, vx, vy));
+
+        // Release 50% of source cell's pressure
+        if (!Cell.isEmpty(source)) {
+          grid.set(
+            frac.pressureSource.x,
+            frac.pressureSource.y,
+            Cell.setPressure(source, Cell.getPressure(source) * 0.5)
+          );
+        }
       }
 
       // Blast wave: push nearby non-solid cells outward from fracture point
@@ -127,6 +135,20 @@ export class FractureAndEjectionPass implements IPhysicsEnginePass {
       const blastSpeed = Math.min(frac.excess / 400, 6.0);
       this.applyBlastWave(grid, frac.x, frac.y, blastRadius, blastSpeed);
     }
+  }
+
+  /**
+   * Count solid cells directly above (x, y), up to the first non-solid cell
+   */
+  private countOverburden(grid: Grid, x: number, y: number): number {
+    let count = 0;
+    for (let checkY = y - 1; checkY >= 0 && count < MAX_OVERBURDEN; checkY--) {
+      const above = grid.get(x, checkY);
+      if (Cell.isEmpty(above)) break;
+      if (MaterialRegistry.get(Cell.getMaterialId(above)).state !== MaterialState.Solid) break;
+      count++;
+    }
+    return count;
   }
 
   /**
