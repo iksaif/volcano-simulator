@@ -68,12 +68,13 @@ See [src/physics/engines/cellular/README.md](src/physics/engines/cellular/README
 
 #### Eruptive Engine ✅
 
-Built for volcanic eruptions:
-- Pressure accumulates in confined magma and gas
-- Rock caps fracture once pressure exceeds their strength, ejecting material
-- Gas buoyancy and material movement tuned for eruptions
+Built for volcanic eruptions. Pressure lives in **magma bodies** (connected regions of lava), which share one overpressure:
+- **Recharge**: enclosed bodies are fed from depth, which builds pressure and keeps them molten. Lava lakes and flows have a wide free surface, so they don't pressurize and they cool.
+- **Degassing and crusting**: an open vent leaks pressure, and its exposed lava crusts over when quiet, sealing the vent so the cycle repeats.
+- **Extrusion**: overpressure pushes magma up through a free surface, displacing air or a whole water column. Moderate pressure wells up and overflows; high pressure fountains.
+- **Fracture**: rock breaks when overpressure exceeds its strength (base strength plus the weight above it). Magma fills the crack; breaking the last layer under open space is an explosion.
 
-Passes live in `src/physics/engines/eruptive/passes/`.
+Each change of volume lowers the body's pressure, so eruptions limit themselves. The logic is in `src/physics/engines/eruptive/passes/MagmaChamberPass.ts`.
 
 #### Fluid Dynamics Engine 🚧
 

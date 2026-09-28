@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "npm run test:cellular && npm run test:eruptive",
     "test:cellular": "tsx tools/test-physics.ts basic --engine=cellular && tsx tools/test-physics.ts velocity --engine=cellular",
-    "test:eruptive": "tsx tools/test-physics.ts eruption --engine=eruptive --frames=200 && tsx tools/test-physics.ts gas-buoyancy --engine=eruptive --frames=50 && tsx tools/test-physics.ts pressure-buildup --engine=eruptive --frames=100",
+    "test:eruptive": "tsx tools/test-physics.ts eruption --engine=eruptive --frames=200 && tsx tools/test-physics.ts gas-buoyancy --engine=eruptive --frames=50 && tsx tools/test-physics.ts pressure-buildup --engine=eruptive --frames=100 && tsx tools/test-physics.ts volcano-preset --engine=eruptive --frames=600",
     "test-physics": "tsx tools/test-physics.ts"
   },
   "devDependencies": {

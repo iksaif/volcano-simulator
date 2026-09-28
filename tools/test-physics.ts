@@ -6,6 +6,7 @@ import { Cell } from '../src/core/Cell';
 import { MaterialType } from '../src/core/Types';
 import { MaterialRegistry } from '../src/materials/MaterialRegistry';
 import { PhysicsEngineRegistry } from '../src/physics/PhysicsEngineRegistry';
+import { WorldGenerator } from '../src/world/WorldGenerator';
 
 // Parse args
 const args = process.argv.slice(2);
@@ -32,6 +33,7 @@ if (testName === 'help') {
   console.log('  eruption         Test eruptive fracture and ejection');
   console.log('  gas-buoyancy     Test gas rising through liquid');
   console.log('  pressure-buildup Test sealed chamber pressure accumulation');
+  console.log('  volcano-preset   Test the volcano preset erupts above its summit');
   console.log('');
   console.log('Options:');
   console.log('  --engine=<name>  Physics engine to use (default: fluiddynamics)');
@@ -60,6 +62,8 @@ if (testName === 'air-stability') {
   testGasBuoyancy();
 } else if (testName === 'pressure-buildup') {
   testPressureBuildup();
+} else if (testName === 'volcano-preset') {
+  testVolcanoPreset();
 } else {
   console.error(`Unknown test: ${testName}`);
   console.log('Run with "help" to see available tests');
@@ -463,9 +467,10 @@ function testEruption() {
     grid.set(x, 6, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
     grid.set(x, 7, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
   }
-  // Rock floor
+  // Rock floor, down to the ground so the chamber doesn't fall
   for (let x = 4; x <= 11; x++) {
     grid.set(x, 14, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+    grid.set(x, 15, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
   }
   // Fill chamber with hot lava
   for (let y = 8; y <= 13; y++) {
@@ -607,10 +612,12 @@ function testPressureBuildup() {
     grid.set(5, y, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
     grid.set(10, y, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
   }
-  // Rock top and bottom
+  // Rock top, and bottom down to the ground so the box doesn't fall
   for (let x = 5; x <= 10; x++) {
     grid.set(x, 5, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
-    grid.set(x, 12, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+    for (let y = 12; y < 16; y++) {
+      grid.set(x, y, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+    }
   }
   // Lava inside
   for (let y = 6; y <= 11; y++) {
@@ -685,6 +692,49 @@ function countEmpty(grid: Grid): number {
     }
   }
   return count;
+}
+
+function testVolcanoPreset() {
+  console.log('🧪 VOLCANO PRESET TEST');
+  console.log('='.repeat(60));
+  console.log(`Grid: 128x128, Frames: ${frames}, Engine: ${engineId}\n`);
+
+  const engine = PhysicsEngineRegistry.create(engineId);
+  const grid = new Grid(128, 128);
+  WorldGenerator.presetVolcano(grid);
+
+  // The summit is the highest rock cell at the start
+  let summitY = grid.height;
+  for (let y = 0; y < grid.height && summitY === grid.height; y++) {
+    for (let x = 0; x < grid.width; x++) {
+      if (Cell.getMaterialId(grid.get(x, y)) === MaterialType.Rock) {
+        summitY = y;
+        break;
+      }
+    }
+  }
+  console.log(`Summit at y=${summitY}`);
+
+  // Erupted material: lava or ash above the summit
+  let eruptedAt = -1;
+  for (let frame = 0; frame < frames && eruptedAt === -1; frame++) {
+    engine.update(grid, 50);
+    for (let y = 0; y < summitY && eruptedAt === -1; y++) {
+      for (let x = 0; x < grid.width; x++) {
+        const materialId = Cell.getMaterialId(grid.get(x, y));
+        if (materialId === MaterialType.Lava || materialId === MaterialType.Ash) {
+          eruptedAt = frame;
+          break;
+        }
+      }
+    }
+  }
+
+  if (eruptedAt !== -1) {
+    console.log(`✅ Volcano erupted above its summit at frame ${eruptedAt}`);
+  } else {
+    fail(`❌ Volcano did not erupt within ${frames} frames`);
+  }
 }
 
 // Report a failed check and make the process exit non-zero
