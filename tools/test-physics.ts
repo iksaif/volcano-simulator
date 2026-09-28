@@ -115,7 +115,7 @@ function testAirStability() {
   if (finalAir === initialCount && finalEmpty === initialEmpty) {
     console.log('✅ TEST PASSED: Grid unchanged');
   } else {
-    console.log(`❌ TEST FAILED: Lost ${initialCount - finalAir} air cells, gained ${finalEmpty - initialEmpty} empty cells`);
+    fail(`❌ TEST FAILED: Lost ${initialCount - finalAir} air cells, gained ${finalEmpty - initialEmpty} empty cells`);
     console.log('\nFinal grid:');
     printGrid(grid);
   }
@@ -180,7 +180,7 @@ function testRockPile() {
   if (finalRockCount === initialRockCount) {
     console.log('✅ TEST PASSED: All rocks preserved');
   } else {
-    console.log(`❌ TEST FAILED: Lost ${initialRockCount - finalRockCount} rocks`);
+    fail(`❌ TEST FAILED: Lost ${initialRockCount - finalRockCount} rocks`);
   }
 }
 
@@ -293,10 +293,10 @@ function testBasicPhysics() {
   printGrid(grid1);
 
   const rockY = findMaterial(grid1, MaterialType.Rock);
-  if (rockY && rockY > 5) {
+  if (rockY !== null && rockY > 5) {
     console.log(`✅ Rock fell from y=5 to y=${rockY}`);
   } else {
-    console.log('❌ Rock did not fall');
+    fail('❌ Rock did not fall');
   }
 
   // Test 2: Water falling
@@ -315,10 +315,10 @@ function testBasicPhysics() {
   printGrid(grid2);
 
   const waterY = findMaterial(grid2, MaterialType.Water);
-  if (waterY && waterY > 2) {
+  if (waterY !== null && waterY > 2) {
     console.log(`✅ Water fell from y=2 to y=${waterY}`);
   } else {
-    console.log('❌ Water did not fall');
+    fail('❌ Water did not fall');
   }
 
   // Test 3: Gas in water
@@ -344,10 +344,10 @@ function testBasicPhysics() {
   printGrid(grid3);
 
   const gasY = findMaterial(grid3, MaterialType.Gas);
-  if (gasY && gasY < 14) {
+  if (gasY !== null && gasY < 14) {
     console.log(`✅ Gas rose from y=14 to y=${gasY}`);
   } else {
-    console.log('❌ Gas did not rise');
+    fail('❌ Gas did not rise');
   }
 }
 
@@ -429,7 +429,7 @@ function testVelocity() {
   if (totalCellsWithVelocity > 0) {
     console.log(`✅ TEST PASSED: Detected ${totalCellsWithVelocity} total cell-frames with velocity`);
   } else {
-    console.log('❌ TEST FAILED: No cells had velocity during entire simulation');
+    fail('❌ TEST FAILED: No cells had velocity during entire simulation');
     console.log('   This means velocities are not being set or are being cleared immediately');
   }
 
@@ -534,13 +534,13 @@ function testEruption() {
   if (fractured) {
     console.log('✅ Rock cap fractured under pressure');
   } else {
-    console.log('❌ Rock cap did not fracture');
+    fail('❌ Rock cap did not fracture');
   }
 
   if (materialAboveCap) {
     console.log('✅ Material escaped the chamber');
   } else {
-    console.log('❌ No material escaped the chamber');
+    fail('❌ No material escaped the chamber');
   }
 }
 
@@ -582,7 +582,7 @@ function testGasBuoyancy() {
   if (finalGasY !== null && finalGasY < 10) {
     console.log(`✅ Gas rose from y=14 to y=${finalGasY}`);
   } else {
-    console.log(`❌ Gas did not rise enough (at y=${finalGasY})`);
+    fail(`❌ Gas did not rise enough (at y=${finalGasY})`);
   }
 }
 
@@ -657,7 +657,7 @@ function testPressureBuildup() {
   if (monotonic && pressureHistory[checkFrames] > 0) {
     console.log(`✅ Pressure increased monotonically in first ${checkFrames} frames (0 -> ${pressureHistory[checkFrames].toFixed(0)})`);
   } else {
-    console.log('❌ Pressure did not increase monotonically');
+    fail('❌ Pressure did not increase monotonically');
   }
 }
 
@@ -685,6 +685,12 @@ function countEmpty(grid: Grid): number {
     }
   }
   return count;
+}
+
+// Report a failed check and make the process exit non-zero
+function fail(message: string): void {
+  console.log(message);
+  process.exitCode = 1;
 }
 
 function findMaterial(grid: Grid, materialId: MaterialType): number | null {
