@@ -71,6 +71,12 @@ export class UIManager {
         this.inputManager.materialBrush.setBrushSize(size);
         brushSizeValue.textContent = size.toString();
       });
+
+      // Keep the slider in sync when the scroll wheel changes the brush size
+      this.inputManager.onBrushSizeChange = (size) => {
+        brushSizeSlider.value = size.toString();
+        brushSizeValue.textContent = size.toString();
+      };
     }
 
     // Material buttons
@@ -122,6 +128,9 @@ export class UIManager {
         break;
       case 'grass':
         material = MaterialType.Grass;
+        break;
+      case 'ash':
+        material = MaterialType.Ash;
         break;
       case 'empty':
         material = MaterialType.Empty;

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Volcano Physics Simulator</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
   <style>
     * {
       margin: 0;
@@ -32,7 +33,9 @@
     }
 
     #simulation-canvas-pixel,
-    #simulation-canvas-webgl {
+    #simulation-canvas-webgl,
+    #simulation-canvas-webgl-overlay,
+    #simulation-canvas-cartoon {
       border: 2px solid #444;
       cursor: crosshair;
       background: #000;
@@ -42,6 +45,12 @@
       position: absolute;
       top: 0;
       left: 0;
+    }
+
+    #simulation-canvas-webgl-overlay {
+      background: transparent;
+      border-color: transparent;
+      pointer-events: none;
     }
 
     #simulation-canvas-pixel {
@@ -135,7 +144,7 @@
 
     .renderer-buttons {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
       margin-top: 10px;
     }
@@ -366,6 +375,8 @@
   <div id="simulation-container">
     <canvas id="simulation-canvas-pixel" width="128" height="128"></canvas>
     <canvas id="simulation-canvas-webgl" width="128" height="128" style="display: none;"></canvas>
+    <canvas id="simulation-canvas-webgl-overlay" width="128" height="128" style="display: none;"></canvas>
+    <canvas id="simulation-canvas-cartoon" width="640" height="640" style="display: none;"></canvas>
     <div id="fps-display">FPS: 0</div>
   </div>
 
@@ -380,6 +391,16 @@
     <div style="position: relative;">
       <h2>🌋 Volcano Simulator</h2>
       <button id="config-button" title="Configuration">⚙️</button>
+    </div>
+
+    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+      <select id="scenario-select" class="physics-engine-select" style="margin-top: 0; flex: 1;" title="World scenario">
+        <option value="flat">🏔️ Flat ground</option>
+        <option value="volcano">🌋 Volcano</option>
+        <option value="ice">🧊 Ice volcano</option>
+        <option value="underwater">🌊 Underwater volcano</option>
+      </select>
+      <button id="reset-button" title="Reset world (R)" style="padding: 0 12px; background: #1a1a1a; color: #eee; border: 2px solid #444; border-radius: 4px; cursor: pointer; font-size: 14px;">↺</button>
     </div>
 
     <div style="background: #1a1a1a; padding: 12px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #444;">
@@ -426,6 +447,8 @@
       • Arrow keys: Move/resize shaft<br>
       • +/- keys: Adjust injection rate<br>
       • Paint with selected material<br>
+      • Right click: erase | Scroll: brush size<br>
+      • Space: pause | R: reset<br>
       • Press H for all hotkeys
     </div>
   </div>
@@ -450,6 +473,7 @@
       <div class="renderer-buttons">
         <button id="renderer-pixel" class="active">Pixel</button>
         <button id="renderer-webgl">Smooth (WebGL)</button>
+        <button id="renderer-cartoon">Cartoon</button>
       </div>
 
       <h3>Physics Engine</h3>
@@ -515,6 +539,22 @@
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">D</kbd></td>
               <td style="padding: 8px; border-bottom: 1px solid #333;">Toggle debug mode</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">Space</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Pause/resume physics</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">R</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Reset the current scenario</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">Right click</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Erase (paint air)</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #333;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">Scroll</kbd></td>
+              <td style="padding: 8px; border-bottom: 1px solid #333;">Change brush size</td>
             </tr>
             <tr>
               <td style="padding: 8px;"><kbd style="background: #1a1a1a; padding: 4px 8px; border-radius: 4px; border: 1px solid #444;">Esc</kbd></td>

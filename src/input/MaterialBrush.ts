@@ -10,9 +10,9 @@ export class MaterialBrush {
   private brushSize: number = Config.DEFAULT_BRUSH_SIZE;
 
   /**
-   * Paint material at the given coordinates
+   * Paint material at the given coordinates (the selected material unless overridden)
    */
-  paint(grid: Grid, x: number, y: number): void {
+  paint(grid: Grid, x: number, y: number, material: MaterialType = this.currentMaterial): void {
     // Paint a circle of the given radius
     for (let dy = -this.brushSize; dy <= this.brushSize; dy++) {
       for (let dx = -this.brushSize; dx <= this.brushSize; dx++) {
@@ -25,7 +25,7 @@ export class MaterialBrush {
             // Determine appropriate temperature for the material
             let temperature: number = Config.ROOM_TEMPERATURE;
 
-            switch (this.currentMaterial) {
+            switch (material) {
               case MaterialType.Lava:
                 temperature = 1500;
                 break;
@@ -53,7 +53,7 @@ export class MaterialBrush {
                 break;
             }
 
-            const cell = Cell.create(this.currentMaterial, temperature, 0);
+            const cell = Cell.create(material, temperature, 0);
             grid.set(px, py, cell);
           }
         }

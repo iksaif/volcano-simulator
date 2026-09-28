@@ -4,6 +4,7 @@ import { Grid } from './core/Grid';
 import { Cell } from './core/Cell';
 import { Renderer } from './rendering/Renderer';
 import { WebGLRenderer } from './rendering/WebGLRenderer';
+import { CartoonRenderer } from './rendering/CartoonRenderer';
 import { Config } from './app/Config';
 import { PerformanceMonitor } from './utils/PerformanceMonitor';
 import { MaterialRegistry } from './materials/MaterialRegistry';
@@ -91,8 +92,11 @@ function init() {
   const webglCanvas = document.getElementById(
     'simulation-canvas-webgl'
   ) as HTMLCanvasElement;
+  const cartoonCanvas = document.getElementById(
+    'simulation-canvas-cartoon'
+  ) as HTMLCanvasElement;
 
-  if (!pixelCanvas || !webglCanvas) {
+  if (!pixelCanvas || !webglCanvas || !cartoonCanvas) {
     throw new Error('Canvas elements not found');
   }
 
@@ -105,22 +109,49 @@ function init() {
   // Try to create WebGL renderer on separate canvas (same grid resolution, WebGL handles smooth upscaling)
   let webglRenderer: WebGLRenderer | null = null;
   try {
-    webglRenderer = new WebGLRenderer(webglCanvas, Config.GRID_WIDTH, Config.GRID_HEIGHT);
+    webglRenderer = new WebGLRenderer(
+      webglCanvas,
+      Config.GRID_WIDTH,
+      Config.GRID_HEIGHT,
+      document.getElementById('simulation-canvas-webgl-overlay') as HTMLCanvasElement | undefined
+    );
     console.log('✅ WebGL2 renderer available');
   } catch (error) {
     console.warn('⚠️  WebGL2 not supported, using pixel renderer only:', error);
   }
 
-  // Current renderer (start with pixel)
-  let currentRenderer: Renderer | WebGLRenderer = pixelRenderer;
+  // Cartoon renderer draws shapes on a high-resolution Canvas2D
+  const cartoonRenderer = new CartoonRenderer(cartoonCanvas, Config.GRID_WIDTH, Config.GRID_HEIGHT);
 
-  // Initialize world with ground and shaft opening
-  WorldGenerator.initializeWorld(
-    grid,
-    15, // Ground depth (15 cells from bottom)
-    Math.floor(grid.width / 2), // Shaft position (center)
-    1 // Shaft width (1 cell)
-  );
+  // Current renderer (start with pixel)
+  let currentRenderer: Renderer | WebGLRenderer | CartoonRenderer = pixelRenderer;
+
+  // Scenario (world layout); 'flat' is the default ground with an injection shaft
+  let scenario = 'flat';
+
+  function loadScenario(name: string): void {
+    scenario = name;
+    switch (name) {
+      case 'volcano':
+        WorldGenerator.presetVolcano(grid);
+        break;
+      case 'ice':
+        WorldGenerator.presetIceVolcano(grid);
+        break;
+      case 'underwater':
+        WorldGenerator.presetUnderwaterVolcano(grid);
+        break;
+      default:
+        scenario = 'flat';
+        WorldGenerator.initializeWorld(
+          grid,
+          Config.GROUND_DEPTH,
+          inputManager.lavaInjector.getShaftPosition(),
+          inputManager.lavaInjector.getShaftWidth()
+        );
+    }
+    console.log(`🗺️  Loaded scenario: ${scenario}`);
+  }
 
   // Create physics engine (default to cellular)
   let physics: IPhysicsEngine = PhysicsEngineRegistry.create('cellular');
@@ -129,6 +160,8 @@ function init() {
   const inputManager = new InputManager(pixelCanvas, grid);
   new UIManager(inputManager); // UIManager sets up event listeners and manages UI state
 
+  loadScenario('flat');
+
   // Visualization mode state
   let visualizationMode: VisualizationMode = VisualizationMode.Normal;
 
@@ -136,46 +169,47 @@ function init() {
   let showVelocityOverlay: boolean = false;
 
   // Renderer switching
-  const pixelButton = document.getElementById('renderer-pixel');
-  const webglButton = document.getElementById('renderer-webgl');
+  const webglOverlay = document.getElementById('simulation-canvas-webgl-overlay');
+  const renderers = [
+    { id: 'pixel', label: 'Pixel', renderer: pixelRenderer, canvas: pixelCanvas, overlay: null },
+    { id: 'webgl', label: 'WebGL', renderer: webglRenderer, canvas: webglCanvas, overlay: webglOverlay },
+    { id: 'cartoon', label: 'Cartoon', renderer: cartoonRenderer, canvas: cartoonCanvas, overlay: null },
+  ];
 
-  if (pixelButton && webglButton) {
-    // Disable WebGL button if not supported
-    if (!webglRenderer) {
-      (webglButton as HTMLButtonElement).disabled = true;
-      webglButton.style.opacity = '0.5';
-      webglButton.style.cursor = 'not-allowed';
-      webglButton.title = 'WebGL2 not supported in this browser';
+  for (const entry of renderers) {
+    const button = document.getElementById(`renderer-${entry.id}`) as HTMLButtonElement | null;
+    if (!button) continue;
+
+    // Disable the button if the renderer could not be created (e.g. no WebGL2)
+    if (!entry.renderer) {
+      button.disabled = true;
+      button.style.opacity = '0.5';
+      button.style.cursor = 'not-allowed';
+      button.title = 'WebGL2 not supported in this browser';
+      continue;
     }
 
-    pixelButton.addEventListener('click', () => {
-      currentRenderer = pixelRenderer;
-      inputManager.setCanvas(pixelCanvas);
+    button.addEventListener('click', () => {
+      currentRenderer = entry.renderer!;
+      inputManager.setCanvas(entry.canvas);
 
-      // Show pixel canvas, hide WebGL canvas
-      pixelCanvas.style.display = 'block';
-      webglCanvas.style.display = 'none';
-
-      pixelButton.classList.add('active');
-      webglButton.classList.remove('active');
-      console.log('🖼️  Switched to Pixel renderer');
-    });
-
-    webglButton.addEventListener('click', () => {
-      if (webglRenderer) {
-        currentRenderer = webglRenderer;
-        inputManager.setCanvas(webglCanvas);
-
-        // Show WebGL canvas, hide pixel canvas
-        webglCanvas.style.display = 'block';
-        pixelCanvas.style.display = 'none';
-
-        webglButton.classList.add('active');
-        pixelButton.classList.remove('active');
-        console.log('✨ Switched to WebGL renderer');
+      // Show only the selected renderer's canvas
+      for (const other of renderers) {
+        const display = other === entry ? 'block' : 'none';
+        other.canvas.style.display = display;
+        if (other.overlay) other.overlay.style.display = display;
+        document.getElementById(`renderer-${other.id}`)?.classList.toggle('active', other === entry);
       }
+      console.log(`🖼️  Switched to ${entry.label} renderer`);
     });
   }
+
+  // Scenario selection and reset
+  const scenarioSelect = document.getElementById('scenario-select') as HTMLSelectElement | null;
+  const resetButton = document.getElementById('reset-button');
+
+  scenarioSelect?.addEventListener('change', () => loadScenario(scenarioSelect.value));
+  resetButton?.addEventListener('click', () => loadScenario(scenario));
 
   // Physics engine switching
   const physicsEngineSelect = document.getElementById('physics-engine') as HTMLSelectElement;
@@ -215,22 +249,26 @@ function init() {
   // Pause/Resume physics toggle
   let isPaused = false;
   const pauseResumeButton = document.getElementById('pause-resume-toggle');
-  if (pauseResumeButton) {
-    pauseResumeButton.addEventListener('click', () => {
-      isPaused = !isPaused;
-      if (isPaused) {
+  function togglePause(): void {
+    isPaused = !isPaused;
+    if (isPaused) {
+      if (pauseResumeButton) {
         pauseResumeButton.textContent = '▶️ RESUME PHYSICS';
         pauseResumeButton.style.color = '#4caf50';
         pauseResumeButton.style.borderColor = '#4caf50';
-        console.log('⏸️  Physics paused');
-      } else {
+      }
+      console.log('⏸️  Physics paused');
+    } else {
+      if (pauseResumeButton) {
         pauseResumeButton.textContent = '⏸️ PAUSE PHYSICS';
         pauseResumeButton.style.color = '#ff9800';
         pauseResumeButton.style.borderColor = '#ff9800';
-        console.log('▶️  Physics resumed');
       }
-    });
+      console.log('▶️  Physics resumed');
+    }
   }
+
+  pauseResumeButton?.addEventListener('click', togglePause);
 
   // Configuration modal
   const configButton = document.getElementById('config-button');
@@ -330,58 +368,56 @@ function init() {
     if (rateSlider) rateSlider.value = inputManager.lavaInjector.getRate().toString();
   }
 
+  // Keep the shaft carved through the flat ground (presets have their own vents)
+  function updateShaftOpening(): void {
+    if (scenario !== 'flat') return;
+    WorldGenerator.updateShaftOpening(
+      grid,
+      Config.GROUND_DEPTH,
+      inputManager.lavaInjector.getShaftPosition(),
+      inputManager.lavaInjector.getShaftWidth()
+    );
+  }
+
   // Initial update
   updateShaftStatus();
 
   // Keyboard hotkeys
   window.addEventListener('keydown', (e) => {
+    // Don't steal keys from dropdowns and sliders
+    if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
+
     // Shaft controls
     switch (e.key) {
+      case ' ':
+        e.preventDefault();
+        togglePause();
+        return;
       case 'ArrowLeft':
         e.preventDefault();
         inputManager.lavaInjector.moveLeft();
-        WorldGenerator.updateShaftOpening(
-          grid,
-          15,
-          inputManager.lavaInjector.getShaftPosition(),
-          inputManager.lavaInjector.getShaftWidth()
-        );
+        updateShaftOpening();
         updateShaftStatus();
         console.log(`⬅️  Shaft moved to position ${inputManager.lavaInjector.getShaftPosition()}`);
         return;
       case 'ArrowRight':
         e.preventDefault();
         inputManager.lavaInjector.moveRight();
-        WorldGenerator.updateShaftOpening(
-          grid,
-          15,
-          inputManager.lavaInjector.getShaftPosition(),
-          inputManager.lavaInjector.getShaftWidth()
-        );
+        updateShaftOpening();
         updateShaftStatus();
         console.log(`➡️  Shaft moved to position ${inputManager.lavaInjector.getShaftPosition()}`);
         return;
       case 'ArrowUp':
         e.preventDefault();
         inputManager.lavaInjector.increaseWidth();
-        WorldGenerator.updateShaftOpening(
-          grid,
-          15,
-          inputManager.lavaInjector.getShaftPosition(),
-          inputManager.lavaInjector.getShaftWidth()
-        );
+        updateShaftOpening();
         updateShaftStatus();
         console.log(`⬆️  Shaft width increased to ${inputManager.lavaInjector.getShaftWidth()}`);
         return;
       case 'ArrowDown':
         e.preventDefault();
         inputManager.lavaInjector.decreaseWidth();
-        WorldGenerator.updateShaftOpening(
-          grid,
-          15,
-          inputManager.lavaInjector.getShaftPosition(),
-          inputManager.lavaInjector.getShaftWidth()
-        );
+        updateShaftOpening();
         updateShaftStatus();
         console.log(`⬇️  Shaft width decreased to ${inputManager.lavaInjector.getShaftWidth()}`);
         return;
@@ -426,6 +462,9 @@ function init() {
         break;
       case 'd':
         PhysicsDebugger.toggle();
+        break;
+      case 'r':
+        loadScenario(scenario);
         break;
     }
   });

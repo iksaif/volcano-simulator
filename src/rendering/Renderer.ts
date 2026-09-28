@@ -13,7 +13,16 @@ export class Renderer {
   private gridHeight: number;
   private scale: number;
 
-  constructor(canvas: HTMLCanvasElement, width: number, height: number, scale: number = 1) {
+  /**
+   * @param transparent - Create a transparent canvas, for use as an overlay above another renderer
+   */
+  constructor(
+    canvas: HTMLCanvasElement,
+    width: number,
+    height: number,
+    scale: number = 1,
+    transparent: boolean = false
+  ) {
     this.canvas = canvas;
     this.gridWidth = width;
     this.gridHeight = height;
@@ -23,7 +32,7 @@ export class Renderer {
     this.canvas.width = width * scale;
     this.canvas.height = height * scale;
 
-    const ctx = canvas.getContext('2d', { alpha: false });
+    const ctx = canvas.getContext('2d', { alpha: transparent });
     if (!ctx) {
       throw new Error('Could not get 2D context');
     }
@@ -61,6 +70,13 @@ export class Renderer {
 
     // Single putImageData call per frame for best performance
     this.ctx.putImageData(this.imageData, 0, 0);
+  }
+
+  /**
+   * Erase everything drawn on a transparent overlay canvas
+   */
+  clearOverlay(): void {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
   /**

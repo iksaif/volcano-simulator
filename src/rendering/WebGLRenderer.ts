@@ -1,5 +1,6 @@
 // WebGL renderer with smooth, game-like rendering
 
+import { Renderer } from './Renderer';
 import { Grid } from '../core/Grid';
 import { Cell } from '../core/Cell';
 import { Config } from '../app/Config';
@@ -20,7 +21,21 @@ export class WebGLRenderer {
   // Vertex buffer
   private positionBuffer: WebGLBuffer;
 
-  constructor(canvas: HTMLCanvasElement, gridWidth: number, gridHeight: number) {
+  // 2D overlay above the WebGL canvas for the cursor and velocity arrows
+  private overlay: Renderer | null;
+
+  /**
+   * @param overlayCanvas - Optional canvas stacked above this one for 2D overlays
+   */
+  constructor(
+    canvas: HTMLCanvasElement,
+    gridWidth: number,
+    gridHeight: number,
+    overlayCanvas?: HTMLCanvasElement
+  ) {
+    this.overlay = overlayCanvas
+      ? new Renderer(overlayCanvas, gridWidth, gridHeight, 4, true)
+      : null;
     this.gridWidth = gridWidth;
     this.gridHeight = gridHeight;
     this.renderWidth = Config.WEBGL_RENDER_WIDTH;
@@ -471,6 +486,9 @@ export class WebGLRenderer {
   render(grid: Grid, getColor: (cell: Cell) => number): void {
     const gl = this.gl;
 
+    // Overlays are redrawn every frame
+    this.overlay?.clearOverlay();
+
     // Update time
     this.time += 0.016; // Roughly 60fps
     const timeLocation = gl.getUniformLocation(this.program, 'u_time');
@@ -539,14 +557,10 @@ export class WebGLRenderer {
   }
 
   /**
-   * Draw brush cursor overlay
-   * Note: We can't use 2D context on a WebGL canvas, so this is a no-op for now
-   * TODO: Implement cursor drawing using WebGL if needed
+   * Draw brush cursor on the 2D overlay canvas
    */
-  drawCursor(_gridX: number, _gridY: number, _brushSize: number): void {
-    // WebGL cursor drawing would require creating a separate overlay canvas
-    // or implementing cursor rendering in WebGL shaders
-    // For now, we skip cursor drawing in WebGL mode
+  drawCursor(gridX: number, gridY: number, brushSize: number): void {
+    this.overlay?.drawCursor(gridX, gridY, brushSize);
   }
 
   /**
@@ -559,18 +573,15 @@ export class WebGLRenderer {
   }
 
   /**
-   * Draw velocity vectors as arrows overlay
-   * Note: WebGL renderer doesn't support 2D overlay drawing
-   * TODO: Implement using separate 2D overlay canvas if needed
+   * Draw velocity vectors as arrows on the 2D overlay canvas
    */
   drawVelocityOverlay(
-    _grid: Grid,
-    _scale?: number,
-    _spacing?: number,
-    _minMagnitude?: number
+    grid: Grid,
+    scale?: number,
+    spacing?: number,
+    minMagnitude?: number
   ): void {
-    // Would require a separate 2D overlay canvas or WebGL-based rendering
-    // For now, velocity overlay only works in pixel renderer mode
+    this.overlay?.drawVelocityOverlay(grid, scale, spacing, minMagnitude);
   }
 
   /**
