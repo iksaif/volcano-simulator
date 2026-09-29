@@ -3,6 +3,7 @@
 import { Grid } from '../core/Grid';
 import { LavaInjector } from './LavaInjector';
 import { MaterialBrush } from './MaterialBrush';
+import { MaterialType } from '../core/Types';
 
 export class InputManager {
   private canvas: HTMLCanvasElement;
@@ -10,8 +11,27 @@ export class InputManager {
   public lavaInjector: LavaInjector;
   public materialBrush: MaterialBrush;
   private isMouseDown = false;
+  private isErasing = false;
   private mouseGridX: number | null = null;
   private mouseGridY: number | null = null;
+
+  // Handlers are bound once so the same references can be removed on canvas switch
+  private readonly onMouseDown = (e: MouseEvent) => this.handleMouseDown(e);
+  private readonly onMouseMove = (e: MouseEvent) => this.handleMouseMove(e);
+  private readonly onMouseUp = () => this.handleMouseUp();
+  private readonly onMouseLeave = () => {
+    this.handleMouseUp();
+    this.mouseGridX = null;
+    this.mouseGridY = null;
+  };
+  private readonly onContextMenu = (e: MouseEvent) => e.preventDefault();
+  private readonly onWheel = (e: WheelEvent) => this.handleWheel(e);
+  private readonly onTouchStart = (e: TouchEvent) => this.handleTouchStart(e);
+  private readonly onTouchMove = (e: TouchEvent) => this.handleTouchMove(e);
+  private readonly onTouchEnd = () => this.handleTouchEnd();
+
+  /** Called when the scroll wheel changes the brush size, so the UI can sync */
+  public onBrushSizeChange: ((size: number) => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement, grid: Grid) {
     this.canvas = canvas;
@@ -41,12 +61,15 @@ export class InputManager {
    * Remove event listeners from canvas
    */
   private removeEventListeners(): void {
-    this.canvas.removeEventListener('mousedown', this.handleMouseDown.bind(this));
-    this.canvas.removeEventListener('mousemove', this.handleMouseMove.bind(this));
-    this.canvas.removeEventListener('mouseup', this.handleMouseUp.bind(this));
-    this.canvas.removeEventListener('touchstart', this.handleTouchStart.bind(this));
-    this.canvas.removeEventListener('touchmove', this.handleTouchMove.bind(this));
-    this.canvas.removeEventListener('touchend', this.handleTouchEnd.bind(this));
+    this.canvas.removeEventListener('mousedown', this.onMouseDown);
+    this.canvas.removeEventListener('mousemove', this.onMouseMove);
+    this.canvas.removeEventListener('mouseup', this.onMouseUp);
+    this.canvas.removeEventListener('mouseleave', this.onMouseLeave);
+    this.canvas.removeEventListener('contextmenu', this.onContextMenu);
+    this.canvas.removeEventListener('wheel', this.onWheel);
+    this.canvas.removeEventListener('touchstart', this.onTouchStart);
+    this.canvas.removeEventListener('touchmove', this.onTouchMove);
+    this.canvas.removeEventListener('touchend', this.onTouchEnd);
   }
 
   /**
@@ -54,19 +77,17 @@ export class InputManager {
    */
   private setupEventListeners(): void {
     // Mouse events
-    this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
-    this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
-    this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
-    this.canvas.addEventListener('mouseleave', () => {
-      this.handleMouseUp();
-      this.mouseGridX = null;
-      this.mouseGridY = null;
-    });
+    this.canvas.addEventListener('mousedown', this.onMouseDown);
+    this.canvas.addEventListener('mousemove', this.onMouseMove);
+    this.canvas.addEventListener('mouseup', this.onMouseUp);
+    this.canvas.addEventListener('mouseleave', this.onMouseLeave);
+    this.canvas.addEventListener('contextmenu', this.onContextMenu);
+    this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
 
     // Touch events
-    this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this));
-    this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this));
-    this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this));
+    this.canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
+    this.canvas.addEventListener('touchmove', this.onTouchMove, { passive: false });
+    this.canvas.addEventListener('touchend', this.onTouchEnd);
   }
 
   /**
@@ -88,10 +109,10 @@ export class InputManager {
    */
   private handleMouseDown(e: MouseEvent): void {
     this.isMouseDown = true;
+    this.isErasing = e.button === 2; // Right button erases
     const { x, y } = this.getGridCoords(e.clientX, e.clientY);
 
-    // Paint with brush
-    this.materialBrush.paint(this.grid, x, y);
+    this.paintAt(x, y);
   }
 
   /**
@@ -107,8 +128,7 @@ export class InputManager {
     // Only paint when mouse is down
     if (!this.isMouseDown) return;
 
-    // Paint with brush
-    this.materialBrush.paint(this.grid, x, y);
+    this.paintAt(x, y);
   }
 
   /**
@@ -116,6 +136,28 @@ export class InputManager {
    */
   private handleMouseUp(): void {
     this.isMouseDown = false;
+    this.isErasing = false;
+  }
+
+  /**
+   * Paint with the selected material, or with air when erasing
+   */
+  private paintAt(x: number, y: number): void {
+    if (this.isErasing) {
+      this.materialBrush.paint(this.grid, x, y, MaterialType.Air);
+    } else {
+      this.materialBrush.paint(this.grid, x, y);
+    }
+  }
+
+  /**
+   * Handle scroll wheel: adjust brush size
+   */
+  private handleWheel(e: WheelEvent): void {
+    e.preventDefault();
+    const step = e.deltaY < 0 ? 1 : -1;
+    this.materialBrush.setBrushSize(this.materialBrush.getBrushSize() + step);
+    this.onBrushSizeChange?.(this.materialBrush.getBrushSize());
   }
 
   /**

@@ -4,8 +4,7 @@
 import { Grid } from '../../../core/Grid';
 import type { IPhysicsEngine, IPhysicsEnginePass } from '../../IPhysicsEngine';
 import { ClearFlagsPass } from './passes/ClearFlagsPass';
-import { PressureAccumulationPass } from './passes/PressureAccumulationPass';
-import { FractureAndEjectionPass } from './passes/FractureAndEjectionPass';
+import { MagmaChamberPass } from './passes/MagmaChamberPass';
 import { EruptiveMaterialMovement } from './passes/EruptiveMaterialMovement';
 import { ThermalDiffusion } from '../cellular/ThermalDiffusion';
 import { StateTransitions } from '../cellular/StateTransitions';
@@ -22,8 +21,7 @@ export class EruptivePhysicsEngine implements IPhysicsEngine {
 
     this.passes = [
       new ClearFlagsPass(),
-      new PressureAccumulationPass(),
-      new FractureAndEjectionPass(),
+      new MagmaChamberPass(),
       new EruptiveMaterialMovement(),
       new ThermalDiffusion(),
       new StateTransitions(),

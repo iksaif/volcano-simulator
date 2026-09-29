@@ -4,6 +4,10 @@ import { Grid } from '../core/Grid';
 import { Cell } from '../core/Cell';
 import { MaterialType } from '../core/Types';
 
+// Magma chambers start molten (lava solidifies below 800°C) but below
+// rock's 1200°C melting point
+const MAGMA_TEMPERATURE = 1150;
+
 export class WorldGenerator {
   /**
    * Initialize world with ground layer and air above
@@ -88,13 +92,24 @@ export class WorldGenerator {
       }
     }
 
-    // Shaft (vertical opening through cone and ground)
+    // Volcanic conduit: an open crater at the summit, a plug of solidified
+    // lava below it, and magma filling the conduit down to the chamber.
+    // Pressure builds under the plug until it blows.
     const shaftW = 2;
+    const craterDepth = 8; // Below this the cone is wide enough to wall in the conduit
+    const plugDepth = 4;
+    const plugTop = peakY + craterDepth;
+    const conduitTop = plugTop + plugDepth;
     for (let y = peakY; y < h; y++) {
       for (let dx = -shaftW; dx <= shaftW; dx++) {
         const x = cx + dx;
-        if (x >= 0 && x < w) {
-          grid.set(x, y, Cell.create(MaterialType.Air, 200, 0));
+        if (x < 0 || x >= w) continue;
+        if (y < plugTop) {
+          grid.set(x, y, Cell.create(MaterialType.Air, 20, 0));
+        } else if (y < conduitTop) {
+          grid.set(x, y, Cell.create(MaterialType.Rock, 300, 0));
+        } else {
+          grid.set(x, y, Cell.create(MaterialType.Lava, MAGMA_TEMPERATURE, 0));
         }
       }
     }
@@ -110,7 +125,7 @@ export class WorldGenerator {
       for (let dx = -rowRadius; dx <= rowRadius; dx++) {
         const xr = cx + dx;
         if (xr >= 0 && xr < w) {
-          grid.set(xr, yr, Cell.create(MaterialType.Lava, 1300, 0));
+          grid.set(xr, yr, Cell.create(MaterialType.Lava, MAGMA_TEMPERATURE, 0));
         }
       }
     }
@@ -164,7 +179,7 @@ export class WorldGenerator {
     const groundY = h - 15;
     for (let y = groundY; y < h; y++)
       for (let x = 0; x < w; x++) {
-        const deep = y > h - 8;
+        const deep = y > h - 11; // Bedrock around the magma core; ice would melt open
         grid.set(x, y, Cell.create(deep ? MaterialType.Rock : MaterialType.Ice, -20, 0));
       }
 
@@ -225,7 +240,7 @@ export class WorldGenerator {
       for (let dx = -rowR; dx <= rowR; dx++) {
         const xr = cx + dx;
         if (xr >= 0 && xr < w) {
-          grid.set(xr, yr, Cell.create(MaterialType.Lava, 1200, 0));
+          grid.set(xr, yr, Cell.create(MaterialType.Lava, MAGMA_TEMPERATURE, 0));
         }
       }
     }
@@ -289,7 +304,7 @@ export class WorldGenerator {
       for (let dx = -rowR; dx <= rowR; dx++) {
         const xr = cx + dx;
         if (xr >= 0 && xr < w) {
-          grid.set(xr, yr, Cell.create(MaterialType.Lava, 1200, 0));
+          grid.set(xr, yr, Cell.create(MaterialType.Lava, MAGMA_TEMPERATURE, 0));
         }
       }
     }

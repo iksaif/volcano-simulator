@@ -13,11 +13,12 @@
 ## ✨ Features
 
 - **⚙️ Physics Engines**
-  - ✅ Cellular automaton engine (mostly working)
+  - ✅ Cellular automaton engine (default, mostly working)
+  - ✅ Eruptive engine: pressure builds in magma chambers, fractures the rock cap, and ejects material
   - 🚧 Fluid dynamics engine (work in progress, not functional yet)
 
 - **🧪 Materials**
-  - 10+ materials: 🌋 lava, 🌊 water, 🪨 rock, 🧊 ice, ☁️ vapor, 💨 air, 🌱 grass, 🌫️ ash
+  - 10 materials: 🌋 lava, 🪨 rock, 💨 gas, 🌊 water, 🧊 ice, ☁️ vapor, 💨 air, 🌱 grass, 🌫️ ash, ⬛ empty
   - Physical properties: density, viscosity, thermal conductivity, heat capacity
   - Phase transitions: melting, boiling, freezing, condensation
   - Temperature-dependent behaviors
@@ -33,13 +34,17 @@
   - Structural collapse when pressure exceeds strength
   - Affects material behavior
 
+- **🗺️ Scenarios**
+  - Flat ground with a lava injection shaft (default)
+  - 🌋 Volcano, 🧊 ice volcano, and 🌊 underwater volcano presets
+
 - **🎮 Controls**
-  - Paint materials with adjustable brush size and temperature
-  - Spawn pre-configured scenarios
-  - Debug overlays for temperature, pressure, velocity
+  - Paint materials with adjustable brush size and lava temperature
+  - Lava injection shaft with adjustable position, width, and rate
+  - Visualization modes for temperature and pressure, plus a velocity overlay
 
 - **🎨 Rendering**
-  - Canvas2D and WebGL modes
+  - Pixel (Canvas2D), smooth (WebGL2), and cartoon (Canvas2D shapes) modes
   - Temperature-based coloring
   - Velocity visualization
 
@@ -60,27 +65,30 @@ For development setup, see **[Development Guide](README.dev.md)**.
 
 ## 🎮 Controls
 
-### 🖱️ Mouse Controls
-- **Left Click**: Place material / activate spawn
-- **Right Click**: Erase (place air)
-- **Scroll Wheel**: Adjust brush size
+### 🖱️ Mouse / Touch
+- **Left click / drag** (or touch): Paint the selected material
+- **Right click / drag**: Erase (paint air)
+- **Scroll wheel**: Change brush size
 
 ### ⌨️ Keyboard Shortcuts
-- **1-9**: Select material type
-- **Space**: Pause/Resume simulation
-- **R**: Reset simulation
-- **T**: Toggle temperature overlay 🌡️
-- **P**: Toggle pressure overlay ⚖️
+- **← / →**: Move the lava injection shaft
+- **↑ / ↓**: Widen / narrow the shaft
+- **+ / -**: Increase / decrease the injection rate
+- **T**: Temperature visualization 🌡️
+- **P**: Pressure visualization ⚖️
+- **N**: Normal visualization
 - **V**: Toggle velocity overlay 💨
-- **Tab**: Switch physics engine ⚙️
-- **+/-**: Adjust simulation speed
-- **F**: Toggle FPS display
+- **Space**: Pause / resume physics
+- **R**: Reset the current scenario
+- **D**: Toggle physics debugger
+- **H**: Show the hotkey help
+- **Esc**: Close dialogs
 
 ### 🎛️ UI Panels
-- **Material Selector**: Choose materials to place
-- **Spawn Mode**: Create predefined scenarios
-- **Settings**: Adjust simulation parameters
-- **Statistics**: View performance metrics
+- **Scenario**: Pick a world preset; ↺ resets it
+- **Eruption**: Start/stop lava injection and set its speed
+- **Material Brush**: Choose a material and brush size
+- **Configuration (⚙️)**: Lava temperature, physics rate, renderer, and physics engine
 
 ## 📚 Documentation
 
@@ -106,7 +114,6 @@ Inspired by falling sand games and cellular automaton simulations.
 
 ## 🗺️ Roadmap
 
-- [ ] 🌋 Fix the lava injector
 - [ ] 💧 Complete fluid dynamics engine
 - [ ] 💥 Implement compression and explosions
 - [ ] 🔥 Implement fire and combustion

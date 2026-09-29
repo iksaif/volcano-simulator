@@ -19,19 +19,7 @@ export class UIManager {
     const eruptionToggle = document.getElementById('eruption-toggle');
     if (eruptionToggle) {
       eruptionToggle.addEventListener('click', () => {
-        const injector = this.inputManager.lavaInjector;
-        injector.setEnabled(!injector.isEnabled());
-        if (injector.isEnabled()) {
-          eruptionToggle.textContent = 'ERUPTING';
-          eruptionToggle.style.color = '#ff6b35';
-          eruptionToggle.style.borderColor = '#ff6b35';
-          eruptionToggle.style.background = '#2a1a0a';
-        } else {
-          eruptionToggle.textContent = 'DORMANT';
-          eruptionToggle.style.color = '#666';
-          eruptionToggle.style.borderColor = '#666';
-          eruptionToggle.style.background = '#1a1a1a';
-        }
+        this.setEruptionEnabled(!this.inputManager.lavaInjector.isEnabled());
       });
     }
 
@@ -71,6 +59,12 @@ export class UIManager {
         this.inputManager.materialBrush.setBrushSize(size);
         brushSizeValue.textContent = size.toString();
       });
+
+      // Keep the slider in sync when the scroll wheel changes the brush size
+      this.inputManager.onBrushSizeChange = (size) => {
+        brushSizeSlider.value = size.toString();
+        brushSizeValue.textContent = size.toString();
+      };
     }
 
     // Material buttons
@@ -90,6 +84,27 @@ export class UIManager {
         }
       });
     });
+  }
+
+  /**
+   * Enable or disable lava injection and update the eruption button
+   */
+  setEruptionEnabled(enabled: boolean): void {
+    this.inputManager.lavaInjector.setEnabled(enabled);
+
+    const eruptionToggle = document.getElementById('eruption-toggle');
+    if (!eruptionToggle) return;
+    if (enabled) {
+      eruptionToggle.textContent = 'ERUPTING';
+      eruptionToggle.style.color = '#ff6b35';
+      eruptionToggle.style.borderColor = '#ff6b35';
+      eruptionToggle.style.background = '#2a1a0a';
+    } else {
+      eruptionToggle.textContent = 'DORMANT';
+      eruptionToggle.style.color = '#666';
+      eruptionToggle.style.borderColor = '#666';
+      eruptionToggle.style.background = '#1a1a1a';
+    }
   }
 
   /**
@@ -122,6 +137,9 @@ export class UIManager {
         break;
       case 'grass':
         material = MaterialType.Grass;
+        break;
+      case 'ash':
+        material = MaterialType.Ash;
         break;
       case 'empty':
         material = MaterialType.Empty;

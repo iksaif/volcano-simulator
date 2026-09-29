@@ -6,7 +6,7 @@ Development documentation for the Volcano Physics Simulator.
 
 ### 📋 Prerequisites
 
-- Node.js 16+ and npm
+- Node.js 22+ and npm
 
 ### 📦 Installation
 
@@ -43,10 +43,11 @@ src/
 ├── core/           # Core data structures (Grid, Cell, Types)
 ├── physics/
 │   └── engines/
-│       ├── cellular/        # Cellular automaton engine (active)
+│       ├── cellular/        # Cellular automaton engine (default)
+│       ├── eruptive/        # Pressure, fracture, and eruption engine
 │       └── fluiddynamics/   # Fluid dynamics engine (WIP)
 ├── materials/      # Material registry and properties
-├── rendering/      # Canvas2D and WebGL renderers
+├── rendering/      # Pixel (Canvas2D), WebGL, and cartoon renderers
 ├── ui/            # User interface components
 ├── input/         # Mouse and keyboard handling
 └── world/         # World generation and scenarios
@@ -64,6 +65,16 @@ The working engine with:
 - Special behaviors (grass growth, etc.)
 
 See [src/physics/engines/cellular/README.md](src/physics/engines/cellular/README.md) for details.
+
+#### Eruptive Engine ✅
+
+Built for volcanic eruptions. Pressure lives in **magma bodies** (connected regions of lava), which share one overpressure:
+- **Recharge**: enclosed bodies are fed from depth, which builds pressure and keeps them molten. Lava lakes and flows have a wide free surface, so they don't pressurize and they cool.
+- **Degassing and crusting**: an open vent leaks pressure, and its exposed lava crusts over when quiet, sealing the vent so the cycle repeats.
+- **Extrusion**: overpressure pushes magma up through a free surface, displacing air or a whole water column. Moderate pressure wells up and overflows; high pressure fountains.
+- **Fracture**: rock breaks when overpressure exceeds its strength (base strength plus the weight above it). Magma fills the crack; breaking the last layer under open space is an explosion.
+
+Each change of volume lowers the body's pressure, so eruptions limit themselves. The logic is in `src/physics/engines/eruptive/passes/MagmaChamberPass.ts`.
 
 #### Fluid Dynamics Engine 🚧
 
@@ -87,12 +98,16 @@ SPH-based fluid simulation. **Work in progress, not functional yet.**
 ### 🧪 Running Tests
 
 ```bash
-# Run all cellular engine tests
-npm run test
+# Run all tests (cellular + eruptive engines)
+npm test
 
-# Run specific test
+# Run one engine's tests
+npm run test:cellular
+npm run test:eruptive
+
+# Run a specific test
 npm run test-physics basic --engine=cellular
-npm run test-physics velocity --engine=cellular
+npm run test-physics eruption --engine=eruptive --frames=200
 ```
 
 ### 📦 Building

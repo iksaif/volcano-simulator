@@ -6,6 +6,7 @@ import { Cell } from '../src/core/Cell';
 import { MaterialType } from '../src/core/Types';
 import { MaterialRegistry } from '../src/materials/MaterialRegistry';
 import { PhysicsEngineRegistry } from '../src/physics/PhysicsEngineRegistry';
+import { WorldGenerator } from '../src/world/WorldGenerator';
 
 // Parse args
 const args = process.argv.slice(2);
@@ -32,6 +33,7 @@ if (testName === 'help') {
   console.log('  eruption         Test eruptive fracture and ejection');
   console.log('  gas-buoyancy     Test gas rising through liquid');
   console.log('  pressure-buildup Test sealed chamber pressure accumulation');
+  console.log('  volcano-preset   Test the volcano preset erupts above its summit');
   console.log('');
   console.log('Options:');
   console.log('  --engine=<name>  Physics engine to use (default: fluiddynamics)');
@@ -60,6 +62,8 @@ if (testName === 'air-stability') {
   testGasBuoyancy();
 } else if (testName === 'pressure-buildup') {
   testPressureBuildup();
+} else if (testName === 'volcano-preset') {
+  testVolcanoPreset();
 } else {
   console.error(`Unknown test: ${testName}`);
   console.log('Run with "help" to see available tests');
@@ -115,7 +119,7 @@ function testAirStability() {
   if (finalAir === initialCount && finalEmpty === initialEmpty) {
     console.log('✅ TEST PASSED: Grid unchanged');
   } else {
-    console.log(`❌ TEST FAILED: Lost ${initialCount - finalAir} air cells, gained ${finalEmpty - initialEmpty} empty cells`);
+    fail(`❌ TEST FAILED: Lost ${initialCount - finalAir} air cells, gained ${finalEmpty - initialEmpty} empty cells`);
     console.log('\nFinal grid:');
     printGrid(grid);
   }
@@ -180,7 +184,7 @@ function testRockPile() {
   if (finalRockCount === initialRockCount) {
     console.log('✅ TEST PASSED: All rocks preserved');
   } else {
-    console.log(`❌ TEST FAILED: Lost ${initialRockCount - finalRockCount} rocks`);
+    fail(`❌ TEST FAILED: Lost ${initialRockCount - finalRockCount} rocks`);
   }
 }
 
@@ -293,10 +297,10 @@ function testBasicPhysics() {
   printGrid(grid1);
 
   const rockY = findMaterial(grid1, MaterialType.Rock);
-  if (rockY && rockY > 5) {
+  if (rockY !== null && rockY > 5) {
     console.log(`✅ Rock fell from y=5 to y=${rockY}`);
   } else {
-    console.log('❌ Rock did not fall');
+    fail('❌ Rock did not fall');
   }
 
   // Test 2: Water falling
@@ -315,10 +319,10 @@ function testBasicPhysics() {
   printGrid(grid2);
 
   const waterY = findMaterial(grid2, MaterialType.Water);
-  if (waterY && waterY > 2) {
+  if (waterY !== null && waterY > 2) {
     console.log(`✅ Water fell from y=2 to y=${waterY}`);
   } else {
-    console.log('❌ Water did not fall');
+    fail('❌ Water did not fall');
   }
 
   // Test 3: Gas in water
@@ -344,10 +348,10 @@ function testBasicPhysics() {
   printGrid(grid3);
 
   const gasY = findMaterial(grid3, MaterialType.Gas);
-  if (gasY && gasY < 14) {
+  if (gasY !== null && gasY < 14) {
     console.log(`✅ Gas rose from y=14 to y=${gasY}`);
   } else {
-    console.log('❌ Gas did not rise');
+    fail('❌ Gas did not rise');
   }
 }
 
@@ -429,7 +433,7 @@ function testVelocity() {
   if (totalCellsWithVelocity > 0) {
     console.log(`✅ TEST PASSED: Detected ${totalCellsWithVelocity} total cell-frames with velocity`);
   } else {
-    console.log('❌ TEST FAILED: No cells had velocity during entire simulation');
+    fail('❌ TEST FAILED: No cells had velocity during entire simulation');
     console.log('   This means velocities are not being set or are being cleared immediately');
   }
 
@@ -463,9 +467,10 @@ function testEruption() {
     grid.set(x, 6, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
     grid.set(x, 7, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
   }
-  // Rock floor
+  // Rock floor, down to the ground so the chamber doesn't fall
   for (let x = 4; x <= 11; x++) {
     grid.set(x, 14, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+    grid.set(x, 15, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
   }
   // Fill chamber with hot lava
   for (let y = 8; y <= 13; y++) {
@@ -534,13 +539,13 @@ function testEruption() {
   if (fractured) {
     console.log('✅ Rock cap fractured under pressure');
   } else {
-    console.log('❌ Rock cap did not fracture');
+    fail('❌ Rock cap did not fracture');
   }
 
   if (materialAboveCap) {
     console.log('✅ Material escaped the chamber');
   } else {
-    console.log('❌ No material escaped the chamber');
+    fail('❌ No material escaped the chamber');
   }
 }
 
@@ -582,7 +587,7 @@ function testGasBuoyancy() {
   if (finalGasY !== null && finalGasY < 10) {
     console.log(`✅ Gas rose from y=14 to y=${finalGasY}`);
   } else {
-    console.log(`❌ Gas did not rise enough (at y=${finalGasY})`);
+    fail(`❌ Gas did not rise enough (at y=${finalGasY})`);
   }
 }
 
@@ -607,10 +612,12 @@ function testPressureBuildup() {
     grid.set(5, y, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
     grid.set(10, y, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
   }
-  // Rock top and bottom
+  // Rock top, and bottom down to the ground so the box doesn't fall
   for (let x = 5; x <= 10; x++) {
     grid.set(x, 5, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
-    grid.set(x, 12, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+    for (let y = 12; y < 16; y++) {
+      grid.set(x, y, new Cell(MaterialType.Rock, 20, 0, 0, 0, 0, 1, -1, false));
+    }
   }
   // Lava inside
   for (let y = 6; y <= 11; y++) {
@@ -657,7 +664,7 @@ function testPressureBuildup() {
   if (monotonic && pressureHistory[checkFrames] > 0) {
     console.log(`✅ Pressure increased monotonically in first ${checkFrames} frames (0 -> ${pressureHistory[checkFrames].toFixed(0)})`);
   } else {
-    console.log('❌ Pressure did not increase monotonically');
+    fail('❌ Pressure did not increase monotonically');
   }
 }
 
@@ -685,6 +692,55 @@ function countEmpty(grid: Grid): number {
     }
   }
   return count;
+}
+
+function testVolcanoPreset() {
+  console.log('🧪 VOLCANO PRESET TEST');
+  console.log('='.repeat(60));
+  console.log(`Grid: 128x128, Frames: ${frames}, Engine: ${engineId}\n`);
+
+  const engine = PhysicsEngineRegistry.create(engineId);
+  const grid = new Grid(128, 128);
+  WorldGenerator.presetVolcano(grid);
+
+  // The summit is the highest rock cell at the start
+  let summitY = grid.height;
+  for (let y = 0; y < grid.height && summitY === grid.height; y++) {
+    for (let x = 0; x < grid.width; x++) {
+      if (Cell.getMaterialId(grid.get(x, y)) === MaterialType.Rock) {
+        summitY = y;
+        break;
+      }
+    }
+  }
+  console.log(`Summit at y=${summitY}`);
+
+  // Erupted material: lava or ash above the summit
+  let eruptedAt = -1;
+  for (let frame = 0; frame < frames && eruptedAt === -1; frame++) {
+    engine.update(grid, 50);
+    for (let y = 0; y < summitY && eruptedAt === -1; y++) {
+      for (let x = 0; x < grid.width; x++) {
+        const materialId = Cell.getMaterialId(grid.get(x, y));
+        if (materialId === MaterialType.Lava || materialId === MaterialType.Ash) {
+          eruptedAt = frame;
+          break;
+        }
+      }
+    }
+  }
+
+  if (eruptedAt !== -1) {
+    console.log(`✅ Volcano erupted above its summit at frame ${eruptedAt}`);
+  } else {
+    fail(`❌ Volcano did not erupt within ${frames} frames`);
+  }
+}
+
+// Report a failed check and make the process exit non-zero
+function fail(message: string): void {
+  console.log(message);
+  process.exitCode = 1;
 }
 
 function findMaterial(grid: Grid, materialId: MaterialType): number | null {
